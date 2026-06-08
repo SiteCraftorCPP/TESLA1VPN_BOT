@@ -1,0 +1,20 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+bot/logs/
+bot/data/
+bot/uploads/
+
+# Dependencies & build
+web/node_modules/
+web/dist/
+web/build/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
