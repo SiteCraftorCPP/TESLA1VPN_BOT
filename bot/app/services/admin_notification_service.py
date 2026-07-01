@@ -69,7 +69,8 @@ class NotificationCategory(StrEnum):
     INFRASTRUCTURE = 'infrastructure'  # Ноды, техработы, статус панели, вебхуки
     ERRORS = 'errors'  # Ошибки бота, краши
     PROMO = 'promo'  # Промокоды, кампании, промогруппы
-    PARTNERS = 'partners'  # Партнёрки, выводы, админ-действия
+    PARTNERS = 'partners'  # Заявки на партнёрку
+    WITHDRAWALS = 'withdrawals'  # Заявки на вывод
     TICKETS = 'tickets'  # Тикеты (уже существует)
 
 
@@ -95,6 +96,10 @@ class AdminNotificationService:
             NotificationCategory.ERRORS: getattr(settings, 'ADMIN_NOTIFICATIONS_ERRORS_TOPIC_ID', None),
             NotificationCategory.PROMO: getattr(settings, 'ADMIN_NOTIFICATIONS_PROMO_TOPIC_ID', None),
             NotificationCategory.PARTNERS: getattr(settings, 'ADMIN_NOTIFICATIONS_PARTNERS_TOPIC_ID', None),
+            NotificationCategory.WITHDRAWALS: (
+                getattr(settings, 'ADMIN_NOTIFICATIONS_WITHDRAWALS_TOPIC_ID', None)
+                or getattr(settings, 'REFERRAL_WITHDRAWAL_NOTIFICATIONS_TOPIC_ID', None)
+            ),
             NotificationCategory.TICKETS: self.ticket_topic_id,
         }
 
@@ -2137,7 +2142,7 @@ class AdminNotificationService:
                 ]
             )
 
-            return await self._send_message('\n'.join(message_lines), category=NotificationCategory.PARTNERS)
+            return await self._send_message('\n'.join(message_lines), category=NotificationCategory.WITHDRAWALS)
 
         except Exception as e:
             logger.error('Ошибка отправки уведомления о запросе на вывод', error=e)

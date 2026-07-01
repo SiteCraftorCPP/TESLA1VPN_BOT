@@ -1039,6 +1039,7 @@
     "openSupport": "Open Support",
     "contactSupport": "Please contact {{username}} for support",
     "contactUs": "Contact Support",
+    "writeButton": "Message",
     "create_ticket": "Create ticket"
   },
   "wheel": {

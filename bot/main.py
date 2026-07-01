@@ -734,14 +734,6 @@ async def main():
         timeline.log_summary()
         summary_logged = True
 
-        # Отправляем стартовое уведомление в админский чат
-        try:
-            from app.services.startup_notification_service import send_bot_startup_notification
-
-            await send_bot_startup_notification(bot)
-        except Exception as startup_notify_error:
-            logger.warning('Не удалось отправить стартовое уведомление', startup_notify_error=startup_notify_error)
-
         try:
             while not killer.exit:
                 await asyncio.sleep(1)

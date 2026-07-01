@@ -919,6 +919,7 @@
     "tooManyRequests": "درخواست‌های زیادی ارسال شده. لطفاً {{seconds}} ثانیه صبر کنید.",
     "contactSupport": "برای پشتیبانی با {{username}} تماس بگیرید",
     "contactUs": "تماس با پشتیبانی",
+    "writeButton": "نوشتن",
     "openSupport": "باز کردن پشتیبانی",
     "ticketsDisabled": "تیکت‌ها غیرفعال است",
     "useExternalLink": "لطفاً از لینک خارجی برای دریافت پشتیبانی استفاده کنید",

@@ -63,7 +63,8 @@ class Settings(BaseSettings):
     ADMIN_NOTIFICATIONS_INFRASTRUCTURE_TOPIC_ID: int | None = None  # Ноды, техработы, статус панели
     ADMIN_NOTIFICATIONS_ERRORS_TOPIC_ID: int | None = None  # Ошибки бота
     ADMIN_NOTIFICATIONS_PROMO_TOPIC_ID: int | None = None  # Промокоды, кампании, промогруппы
-    ADMIN_NOTIFICATIONS_PARTNERS_TOPIC_ID: int | None = None  # Партнёрки, выводы, админ-действия
+    ADMIN_NOTIFICATIONS_PARTNERS_TOPIC_ID: int | None = None  # Заявки на партнёрку
+    ADMIN_NOTIFICATIONS_WITHDRAWALS_TOPIC_ID: int | None = None  # Заявки на вывод
 
     # Per-category enable/disable (default True for backwards compatibility)
     ADMIN_NOTIFICATIONS_PURCHASES_ENABLED: bool = True
@@ -75,7 +76,11 @@ class Settings(BaseSettings):
     ADMIN_NOTIFICATIONS_ERRORS_ENABLED: bool = True
     ADMIN_NOTIFICATIONS_PROMO_ENABLED: bool = True
     ADMIN_NOTIFICATIONS_PARTNERS_ENABLED: bool = True
+    ADMIN_NOTIFICATIONS_WITHDRAWALS_ENABLED: bool = True
     ADMIN_NOTIFICATIONS_TICKETS_ENABLED: bool = True
+
+    # Стартовое «✅ Бот успешно запущен» в админ-чат (по умолчанию выключено)
+    ADMIN_STARTUP_NOTIFICATION_ENABLED: bool = False
 
     # Настройки очереди чеков NaloGO
     NALOGO_QUEUE_CHECK_INTERVAL: int = 600  # Интервал проверки очереди (секунды, 10 мин)
@@ -282,7 +287,7 @@ class Settings(BaseSettings):
     REFERRAL_NOTIFICATION_RETRY_ATTEMPTS: int = 3
 
     # Настройки вывода реферального баланса
-    REFERRAL_WITHDRAWAL_ENABLED: bool = False  # Включить возможность вывода
+    REFERRAL_WITHDRAWAL_ENABLED: bool = True  # Включить возможность вывода
     REFERRAL_WITHDRAWAL_MIN_AMOUNT_KOPEKS: int = 100000  # Мин. сумма вывода (1000₽)
     REFERRAL_WITHDRAWAL_COOLDOWN_DAYS: int = 30  # Частота запросов на вывод
     REFERRAL_WITHDRAWAL_ONLY_REFERRAL_BALANCE: bool = True  # Только реф. баланс (False = реф + свой)
