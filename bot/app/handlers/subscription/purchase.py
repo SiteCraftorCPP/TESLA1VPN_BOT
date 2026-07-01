@@ -943,10 +943,9 @@ async def activate_trial(callback: types.CallbackQuery, db_user: User, db: Async
 
         # No trial tariff configured, use the legacy random trial squad fallback.
         if not trial_squads:
-            from app.database.crud.server_squad import get_random_trial_squad_uuid
+            from app.database.crud.server_squad import resolve_trial_squad_uuids
 
-            trial_squad_uuid = await get_random_trial_squad_uuid(db)
-            trial_squads = [trial_squad_uuid] if trial_squad_uuid else []
+            trial_squads = await resolve_trial_squad_uuids(db)
 
         subscription = await create_trial_subscription(
             db,
@@ -3345,10 +3344,9 @@ async def handle_trial_pay_with_balance(callback: types.CallbackQuery, db_user: 
 
         # No trial tariff configured, use the legacy random trial squad fallback.
         if not trial_squads:
-            from app.database.crud.server_squad import get_random_trial_squad_uuid
+            from app.database.crud.server_squad import resolve_trial_squad_uuids
 
-            trial_squad_uuid = await get_random_trial_squad_uuid(db)
-            trial_squads = [trial_squad_uuid] if trial_squad_uuid else []
+            trial_squads = await resolve_trial_squad_uuids(db)
 
         subscription = await create_trial_subscription(
             db,
@@ -3713,10 +3711,9 @@ async def handle_trial_payment_method(callback: types.CallbackQuery, db_user: Us
 
         # Если триальный тариф не найден, используем legacy fallback со случайным сквадом.
         if not trial_squads_list:
-            from app.database.crud.server_squad import get_random_trial_squad_uuid
+            from app.database.crud.server_squad import resolve_trial_squad_uuids
 
-            trial_squad_uuid = await get_random_trial_squad_uuid(db)
-            trial_squads_list = [trial_squad_uuid] if trial_squad_uuid else []
+            trial_squads_list = await resolve_trial_squad_uuids(db)
 
         # Создаем pending триальную подписку
         pending_subscription = await create_pending_trial_subscription(

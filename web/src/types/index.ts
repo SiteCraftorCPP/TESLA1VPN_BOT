@@ -479,6 +479,7 @@ export interface ReferralTerms {
   inviter_bonus_rubles: number;
   max_commission_payments: number;
   partner_section_visible?: boolean;
+  withdrawal_enabled?: boolean;
 }
 
 // Ticket types

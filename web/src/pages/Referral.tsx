@@ -93,17 +93,17 @@ export default function Referral() {
 
   const isPartner = partnerStatus?.partner_status === 'approved';
 
-  // Withdrawal queries (only when partner is approved)
+  // Withdrawal queries (only when withdrawal is enabled in terms)
   const { data: withdrawalBalance } = useQuery({
     queryKey: ['withdrawal-balance'],
     queryFn: withdrawalApi.getBalance,
-    enabled: isPartner,
+    enabled: !!terms?.withdrawal_enabled,
   });
 
   const { data: withdrawalHistory } = useQuery({
     queryKey: ['withdrawal-history'],
     queryFn: withdrawalApi.getHistory,
-    enabled: isPartner,
+    enabled: !!terms?.withdrawal_enabled,
   });
 
   // Withdrawal cancel mutation
@@ -399,138 +399,9 @@ export default function Referral() {
         </div>
       )}
 
-      {/* ==================== Partner Application Section ==================== */}
+      {/* ==================== Withdrawal Section ==================== */}
 
-      {/* Status: none — Become a Partner CTA */}
-      {terms?.partner_section_visible !== false && showApplySection && (
-        <div className="bento-card">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-500/10 text-accent-400">
-              <PartnerIcon className="h-8 w-8" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-dark-100">
-                {t('referral.partner.becomePartner')}
-              </h2>
-              <p className="mt-1 text-sm text-dark-400">
-                {t('referral.partner.becomePartnerDesc')}
-              </p>
-              <button
-                onClick={() => navigate('/referral/partner/apply')}
-                className="btn-primary mt-4 px-6"
-              >
-                {t('referral.partner.applyButton')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status: pending — Application Under Review */}
-      {terms?.partner_section_visible !== false && showPendingSection && (
-        <div className="bento-card border-warning-500/20">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-warning-500/10 text-warning-400">
-              <ClockIcon />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-dark-100">
-                {t('referral.partner.underReview')}
-              </h2>
-              <p className="mt-1 text-sm text-dark-400">{t('referral.partner.underReviewDesc')}</p>
-              {partnerStatus?.latest_application?.created_at && (
-                <p className="mt-2 text-xs text-dark-500">
-                  {t('referral.partner.submittedAt', {
-                    date: new Date(partnerStatus.latest_application.created_at).toLocaleDateString(
-                      i18n.language,
-                    ),
-                  })}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status: approved — Partner Badge */}
-      {terms?.partner_section_visible !== false && showApprovedSection && (
-        <div className="bento-card border-success-500/20">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-success-500/10 text-success-400">
-              <PartnerIcon className="h-8 w-8" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-dark-100">
-                  {t('referral.partner.partnerStatus')}
-                </h2>
-                <span className="badge-success">{t('referral.partner.active')}</span>
-              </div>
-              <p className="mt-1 text-sm text-dark-400">
-                {t('referral.partner.commissionInfo', {
-                  percent: partnerStatus?.commission_percent ?? 0,
-                })}
-              </p>
-            </div>
-            <a href="#withdrawal-section" className="btn-secondary hidden px-4 sm:flex">
-              {t('referral.withdrawal.goToWithdrawal')}
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* Status: rejected — Rejection Notice */}
-      {terms?.partner_section_visible !== false && showRejectedSection && (
-        <div className="bento-card border-error-500/20">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-error-500/10 text-error-400">
-              <ExclamationIcon className="h-8 w-8" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-dark-100">
-                {t('referral.partner.rejected')}
-              </h2>
-              {partnerStatus?.latest_application?.admin_comment && (
-                <p className="mt-1 text-sm text-dark-300">
-                  {partnerStatus.latest_application.admin_comment}
-                </p>
-              )}
-              <button
-                onClick={() => navigate('/referral/partner/apply')}
-                className="btn-primary mt-4 px-6"
-              >
-                {t('referral.partner.reapplyButton')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==================== Partner Campaigns Section ==================== */}
-
-      {terms?.partner_section_visible !== false &&
-        isPartner &&
-        partnerStatus?.campaigns &&
-        partnerStatus.campaigns.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-500/10 text-accent-400">
-                <LinkIcon />
-              </div>
-              <h2 className="text-lg font-semibold text-dark-100">
-                {t('referral.partner.yourCampaigns')}
-              </h2>
-            </div>
-
-            {partnerStatus.campaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
-        )}
-
-      {/* ==================== Withdrawal Section (approved partners only) ==================== */}
-
-      {terms?.partner_section_visible !== false && isPartner && (
+      {terms?.withdrawal_enabled && (
         <div id="withdrawal-section" className="space-y-6">
           {/* Withdrawal Balance Card */}
           {withdrawalBalance && (
@@ -662,6 +533,136 @@ export default function Referral() {
           </div>
         </div>
       )}
+
+      {/* ==================== Partner Application Section ==================== */}
+
+      {/* Status: none — Become a Partner CTA */}
+      {terms?.partner_section_visible !== false && showApplySection && (
+        <div className="bento-card">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-500/10 text-accent-400">
+              <PartnerIcon className="h-8 w-8" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-dark-100">
+                {t('referral.partner.becomePartner')}
+              </h2>
+              <p className="mt-1 text-sm text-dark-400">
+                {t('referral.partner.becomePartnerDesc')}
+              </p>
+              <button
+                onClick={() => navigate('/referral/partner/apply')}
+                className="btn-primary mt-4 px-6"
+              >
+                {t('referral.partner.applyButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status: pending — Application Under Review */}
+      {terms?.partner_section_visible !== false && showPendingSection && (
+        <div className="bento-card border-warning-500/20">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-warning-500/10 text-warning-400">
+              <ClockIcon />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-dark-100">
+                {t('referral.partner.underReview')}
+              </h2>
+              <p className="mt-1 text-sm text-dark-400">{t('referral.partner.underReviewDesc')}</p>
+              {partnerStatus?.latest_application?.created_at && (
+                <p className="mt-2 text-xs text-dark-500">
+                  {t('referral.partner.submittedAt', {
+                    date: new Date(partnerStatus.latest_application.created_at).toLocaleDateString(
+                      i18n.language,
+                    ),
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status: approved — Partner Badge */}
+      {terms?.partner_section_visible !== false && showApprovedSection && (
+        <div className="bento-card border-success-500/20">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-success-500/10 text-success-400">
+              <PartnerIcon className="h-8 w-8" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-dark-100">
+                  {t('referral.partner.partnerStatus')}
+                </h2>
+                <span className="badge-success">{t('referral.partner.active')}</span>
+              </div>
+              <p className="mt-1 text-sm text-dark-400">
+                {t('referral.partner.commissionInfo', {
+                  percent: partnerStatus?.commission_percent ?? 0,
+                })}
+              </p>
+            </div>
+            <a href="#withdrawal-section" className="btn-secondary hidden px-4 sm:flex">
+              {t('referral.withdrawal.goToWithdrawal')}
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Status: rejected — Rejection Notice */}
+      {terms?.partner_section_visible !== false && showRejectedSection && (
+        <div className="bento-card border-error-500/20">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-error-500/10 text-error-400">
+              <ExclamationIcon className="h-8 w-8" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold text-dark-100">
+                {t('referral.partner.rejected')}
+              </h2>
+              {partnerStatus?.latest_application?.admin_comment && (
+                <p className="mt-1 text-sm text-dark-300">
+                  {partnerStatus.latest_application.admin_comment}
+                </p>
+              )}
+              <button
+                onClick={() => navigate('/referral/partner/apply')}
+                className="btn-primary mt-4 px-6"
+              >
+                {t('referral.partner.reapplyButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== Partner Campaigns Section ==================== */}
+
+      {terms?.partner_section_visible !== false &&
+        isPartner &&
+        partnerStatus?.campaigns &&
+        partnerStatus.campaigns.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-500/10 text-accent-400">
+                <LinkIcon />
+              </div>
+              <h2 className="text-lg font-semibold text-dark-100">
+                {t('referral.partner.yourCampaigns')}
+              </h2>
+            </div>
+
+            {partnerStatus.campaigns.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+        )}
+
     </div>
   );
 }

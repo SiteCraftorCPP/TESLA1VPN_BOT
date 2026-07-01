@@ -207,7 +207,7 @@ export default function Support() {
         return {
           title: isAdmin ? t('support.ticketsDisabled') : t('support.title'),
           message: t('support.contactSupport', { username: supportUsername }),
-          buttonText: t('support.contactUs'),
+          buttonText: t('support.writeButton'),
           buttonAction: () => {
             log.debug('Button clicked, opening:', supportUsername);
 
@@ -242,7 +242,7 @@ export default function Support() {
       return {
         title: isAdmin ? t('support.ticketsDisabled') : t('support.title'),
         message: t('support.contactSupport', { username: supportUsername }),
-        buttonText: t('support.contactUs'),
+        buttonText: t('support.writeButton'),
         buttonAction: () => {
           log.debug('Fallback button clicked, opening:', supportUsername);
 
@@ -351,18 +351,20 @@ export default function Support() {
       {/* Contact support card for "both" mode */}
       {supportConfig?.support_type === 'both' && supportConfig.support_username && (
         <motion.div variants={staggerItem}>
-          <Card className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-dark-800">
+          <Card className="flex items-center gap-3 p-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-dark-800">
                 <ChatIcon className="h-5 w-5 text-dark-400" />
               </div>
-              <div>
-                <div className="text-sm font-medium text-dark-100">{t('support.contactUs')}</div>
-                <div className="text-xs text-dark-400">{supportConfig.support_username}</div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-dark-100">{t('support.contactUs')}</div>
+                <div className="truncate text-xs text-dark-400">{supportConfig.support_username}</div>
               </div>
             </div>
             <Button
               variant="secondary"
+              size="sm"
+              className="shrink-0 whitespace-nowrap"
               onClick={() => {
                 const username = supportConfig.support_username!.startsWith('@')
                   ? supportConfig.support_username!.slice(1)
@@ -370,7 +372,7 @@ export default function Support() {
                 openTelegramLink(`https://t.me/${username}`);
               }}
             >
-              {t('support.contactUs')}
+              {t('support.writeButton')}
             </Button>
           </Card>
         </motion.div>

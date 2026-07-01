@@ -847,24 +847,10 @@ async def confirm_withdrawal_request(callback: types.CallbackQuery, db_user: Use
     try:
         notification_service = AdminNotificationService(callback.bot)
         await notification_service.send_admin_notification(
-            admin_text, reply_markup=admin_keyboard, category=NotificationCategory.PARTNERS
+            admin_text, reply_markup=admin_keyboard, category=NotificationCategory.WITHDRAWALS
         )
     except Exception as e:
         logger.error('Ошибка отправки уведомления админам о заявке на вывод', error=e)
-
-    # Уведомление в топик, если настроено
-    topic_id = settings.REFERRAL_WITHDRAWAL_NOTIFICATIONS_TOPIC_ID
-    if topic_id and settings.ADMIN_NOTIFICATIONS_CHAT_ID:
-        try:
-            await callback.bot.send_message(
-                chat_id=settings.ADMIN_NOTIFICATIONS_CHAT_ID,
-                message_thread_id=topic_id,
-                text=admin_text,
-                reply_markup=admin_keyboard,
-                parse_mode='HTML',
-            )
-        except Exception as e:
-            logger.error('Ошибка отправки уведомления в топик о заявке на вывод', error=e)
 
     # Отвечаем пользователю
     text = texts.t(

@@ -308,7 +308,7 @@ class SubscriptionService:
         updated_user = await api.create_user(username=username, **common_kwargs)
         if reset_traffic:
             await self._reset_user_traffic(api, updated_user.uuid, user, reset_reason)
-        return updated_user
+        return await self._sync_squads_to_panel_after_provision(api, subscription, updated_user)
 
     async def _create_or_update_remnawave_user_single(
         self,
@@ -396,7 +396,25 @@ class SubscriptionService:
         updated_user = await api.create_user(username=username, **common_kwargs)
         if reset_traffic:
             await self._reset_user_traffic(api, updated_user.uuid, user, reset_reason)
-        return updated_user
+        return await self._sync_squads_to_panel_after_provision(api, subscription, updated_user)
+
+    async def _sync_squads_to_panel_after_provision(
+        self,
+        api: RemnaWaveAPI,
+        subscription: Subscription,
+        panel_user: RemnaWaveUser,
+    ) -> RemnaWaveUser:
+        """POST /api/users may ignore activeInternalSquads — ensure PATCH is applied."""
+        if not subscription.connected_squads:
+            return panel_user
+        panel_squads = set(panel_user.active_internal_squads or [])
+        desired = set(subscription.connected_squads)
+        if panel_squads == desired:
+            return panel_user
+        return await api.update_user(
+            uuid=panel_user.uuid,
+            active_internal_squads=list(subscription.connected_squads),
+        )
 
     async def update_remnawave_user(
         self,

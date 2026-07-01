@@ -85,3 +85,4 @@ class ReferralTermsResponse(BaseModel):
     inviter_bonus_rubles: float
     max_commission_payments: int = 0
     partner_section_visible: bool = True
+    withdrawal_enabled: bool = False

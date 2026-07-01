@@ -919,6 +919,7 @@
     "tooManyRequests": "请求过多。请等待 {{seconds}} 秒。",
     "contactSupport": "如需帮助，请联系{{username}}",
     "contactUs": "联系支持",
+    "writeButton": "联系",
     "openSupport": "打开支持",
     "ticketsDisabled": "工单已禁用",
     "useExternalLink": "请使用外部链接获取支持",

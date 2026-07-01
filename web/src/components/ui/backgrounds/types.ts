@@ -27,8 +27,12 @@ export interface AnimationConfig {
 
 export const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {
   enabled: true,
-  type: 'aurora',
-  settings: {},
+  type: 'dots',
+  settings: {
+    variant: 'dots',
+    gridColor: 'rgba(255,255,255,0.04)',
+    gridSize: 48,
+  },
   opacity: 1.0,
   blur: 0,
   reducedOnMobile: true,

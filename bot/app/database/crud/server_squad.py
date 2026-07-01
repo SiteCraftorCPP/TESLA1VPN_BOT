@@ -335,7 +335,8 @@ async def sync_with_remnawave(db: AsyncSession, remnawave_squads: list[dict]) ->
                 display_name=original_name,
                 original_name=original_name,
                 price_kopeks=1000,
-                is_available=False,
+                is_available=True,
+                is_trial_eligible=True,
             )
             created += 1
 
@@ -515,6 +516,30 @@ async def get_random_trial_squad_uuid(
         return squad.squad_uuid
 
     return None
+
+
+async def resolve_trial_squad_uuids(db: AsyncSession) -> list[str]:
+    """Pick squad UUIDs for a new trial so Remnawave never provisions an empty host list."""
+    from app.config import settings
+
+    trial_uuid = await get_random_trial_squad_uuid(db)
+    if trial_uuid:
+        return [trial_uuid]
+
+    simple_uuid = (settings.SIMPLE_SUBSCRIPTION_SQUAD_UUID or '').strip()
+    if simple_uuid:
+        logger.info('Trial squads: using SIMPLE_SUBSCRIPTION_SQUAD_UUID', squad_uuid=simple_uuid)
+        return [simple_uuid]
+
+    result = await db.execute(
+        select(ServerSquad.squad_uuid).order_by(ServerSquad.sort_order, ServerSquad.id).limit(1)
+    )
+    fallback_uuid = result.scalar_one_or_none()
+    if fallback_uuid:
+        logger.warning('Trial squads: using first synced squad as fallback', squad_uuid=fallback_uuid)
+        return [fallback_uuid]
+
+    return []
 
 
 async def get_server_statistics(db: AsyncSession) -> dict:

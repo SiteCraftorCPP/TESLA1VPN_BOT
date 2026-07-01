@@ -52,8 +52,12 @@ TELEGRAM_OIDC_CLIENT_ID_KEY = 'TELEGRAM_OIDC_CLIENT_ID'
 # Default animation config
 DEFAULT_ANIMATION_CONFIG = {
     'enabled': True,
-    'type': 'aurora',
-    'settings': {},
+    'type': 'dots',
+    'settings': {
+        'variant': 'dots',
+        'gridColor': 'rgba(255,255,255,0.04)',
+        'gridSize': 48,
+    },
     'opacity': 1.0,
     'blur': 0,
     'reducedOnMobile': True,
@@ -85,11 +89,11 @@ class BrandingNameUpdate(BaseModel):
 class ThemeColorsResponse(BaseModel):
     """Theme colors settings."""
 
-    accent: str = '#3b82f6'
-    darkBackground: str = '#0a0f1a'
-    darkSurface: str = '#0f172a'
-    darkText: str = '#f1f5f9'
-    darkTextSecondary: str = '#94a3b8'
+    accent: str = '#06b6d4'
+    darkBackground: str = '#0a0b14'
+    darkSurface: str = '#0b1428'
+    darkText: str = '#f8fafc'
+    darkTextSecondary: str = '#64748b'
     lightBackground: str = '#F7E7CE'
     lightSurface: str = '#FEF9F0'
     lightText: str = '#1F1A12'
@@ -321,11 +325,11 @@ class AnalyticsCountersUpdate(BaseModel):
 
 # Default theme colors
 DEFAULT_THEME_COLORS = {
-    'accent': '#3b82f6',
-    'darkBackground': '#0a0f1a',
-    'darkSurface': '#0f172a',
-    'darkText': '#f1f5f9',
-    'darkTextSecondary': '#94a3b8',
+    'accent': '#06b6d4',
+    'darkBackground': '#0a0b14',
+    'darkSurface': '#0b1428',
+    'darkText': '#f8fafc',
+    'darkTextSecondary': '#64748b',
     'lightBackground': '#F7E7CE',
     'lightSurface': '#FEF9F0',
     'lightText': '#1F1A12',

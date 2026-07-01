@@ -204,6 +204,9 @@ class StartupNotificationService:
         Returns:
             bool: True если сообщение отправлено успешно
         """
+        if not getattr(settings, 'ADMIN_STARTUP_NOTIFICATION_ENABLED', False):
+            return False
+
         if not self.enabled or not self.chat_id:
             logger.debug('Стартовое уведомление отключено или chat_id не задан')
             return False
