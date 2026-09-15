@@ -422,6 +422,7 @@ export default function Info() {
   });
 
   const showFaqTab = Boolean(tabReplacements?.faq || (faqPages && faqPages.length > 0));
+  const showRulesTab = Boolean(tabReplacements?.rules);
 
   const { data: rules, isLoading: rulesLoading } = useQuery({
     queryKey: ['rules'],
@@ -470,10 +471,14 @@ export default function Info() {
 
   const tabs = useMemo(
     () => [
-      ...builtinTabs.filter((tab) => tab.id !== 'faq' || showFaqTab),
+      ...builtinTabs.filter((tab) => {
+        if (tab.id === 'faq') return showFaqTab;
+        if (tab.id === 'rules') return showRulesTab;
+        return true;
+      }),
       ...customTabs,
     ],
-    [builtinTabs, customTabs, showFaqTab],
+    [builtinTabs, customTabs, showFaqTab, showRulesTab],
   );
 
   useEffect(() => {
@@ -481,7 +486,10 @@ export default function Info() {
     if (activeTab === 'faq' && !showFaqTab) {
       selectTab('privacy');
     }
-  }, [activeTab, showFaqTab, replacementsLoaded, selectTab]);
+    if (activeTab === 'rules' && !showRulesTab) {
+      selectTab('privacy');
+    }
+  }, [activeTab, showFaqTab, showRulesTab, replacementsLoaded, selectTab]);
 
   const toggleFaq = useCallback((id: number) => {
     setExpandedFaq((prev) => (prev === id ? null : id));
@@ -578,6 +586,10 @@ export default function Info() {
     }
 
     if (activeTab === 'rules') {
+      if (!showRulesTab) {
+        return null;
+      }
+
       if (rulesLoading) {
         return (
           <div className="flex justify-center py-8">
