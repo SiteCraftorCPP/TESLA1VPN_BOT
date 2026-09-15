@@ -22,6 +22,7 @@ import { Button } from '@/components/primitives/Button';
 import { Switch } from '@/components/primitives/Switch';
 import { staggerContainer, staggerItem } from '@/components/motion/transitions';
 import { CopyIcon, CheckIcon, ShareIcon, ArrowRightIcon, PencilIcon } from '@/components/icons';
+import LegalLinks from '@/components/LegalLinks';
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -756,6 +757,8 @@ export default function Profile() {
           )}
         </Card>
       </motion.div>
+
+      <LegalLinks className="pb-2 pt-4" />
     </motion.div>
   );
 }

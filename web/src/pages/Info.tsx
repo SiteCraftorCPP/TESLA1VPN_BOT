@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { PiCaretDown } from 'react-icons/pi';
@@ -313,7 +314,11 @@ function ReplacementFaqView({ items }: { items: FaqItem[] }) {
 
 export default function Info() {
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState<string>('faq');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const tab = searchParams.get('tab');
+    return tab && BUILTIN_TABS.has(tab) ? tab : 'privacy';
+  });
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const locale = i18n.language.split('-')[0];
 
@@ -335,6 +340,30 @@ export default function Info() {
   const extraPages = useMemo(
     () => (customPages ?? []).filter((p) => !p.replaces_tab && !BUILTIN_TABS.has(p.slug)),
     [customPages],
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (!tab) return;
+    if (BUILTIN_TABS.has(tab)) {
+      setActiveTab(tab);
+      return;
+    }
+    if (extraPages.some((page) => page.slug === tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, extraPages]);
+
+  const selectTab = useCallback(
+    (tabId: string) => {
+      setActiveTab(tabId);
+      if (BUILTIN_TABS.has(tabId) || extraPages.some((page) => page.slug === tabId)) {
+        setSearchParams({ tab: tabId }, { replace: true });
+      } else {
+        setSearchParams({}, { replace: true });
+      }
+    },
+    [extraPages, setSearchParams],
   );
 
   // Determine if we're on a built-in tab or a custom page tab
@@ -388,10 +417,11 @@ export default function Info() {
   const { data: faqPages, isLoading: faqLoading } = useQuery({
     queryKey: ['faq-pages'],
     queryFn: infoApi.getFaqPages,
-    enabled: activeTab === 'faq' && !currentTabSlug && replacementsLoaded,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    enabled: replacementsLoaded,
+    staleTime: 60_000,
   });
+
+  const showFaqTab = Boolean(tabReplacements?.faq || (faqPages && faqPages.length > 0));
 
   const { data: rules, isLoading: rulesLoading } = useQuery({
     queryKey: ['rules'],
@@ -438,7 +468,20 @@ export default function Info() {
     return { id: p.slug, label, icon: DocumentIcon, emoji: p.icon ?? undefined };
   });
 
-  const tabs = [...builtinTabs, ...customTabs];
+  const tabs = useMemo(
+    () => [
+      ...builtinTabs.filter((tab) => tab.id !== 'faq' || showFaqTab),
+      ...customTabs,
+    ],
+    [builtinTabs, customTabs, showFaqTab],
+  );
+
+  useEffect(() => {
+    if (!replacementsLoaded) return;
+    if (activeTab === 'faq' && !showFaqTab) {
+      selectTab('privacy');
+    }
+  }, [activeTab, showFaqTab, replacementsLoaded, selectTab]);
 
   const toggleFaq = useCallback((id: number) => {
     setExpandedFaq((prev) => (prev === id ? null : id));
@@ -496,6 +539,10 @@ export default function Info() {
     }
 
     if (activeTab === 'faq') {
+      if (!showFaqTab) {
+        return null;
+      }
+
       if (faqLoading) {
         return (
           <div className="flex justify-center py-8">
@@ -813,7 +860,7 @@ export default function Info() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
             className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
               activeTab === tab.id
                 ? 'bg-accent-500 text-white'

@@ -24,6 +24,7 @@ import OAuthProviderIcon from '../components/OAuthProviderIcon';
 import { saveOAuthState } from '../utils/oauth';
 import { getPendingReferralCode } from '../utils/referral';
 import { UsersIcon, EmailIcon, RefreshIcon, ChevronDownIcon } from '@/components/icons';
+import LegalLinks from '@/components/LegalLinks';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -737,6 +738,8 @@ export default function Login() {
             )}
           </div>
         )}
+
+        <LegalLinks className="px-2 pt-1" />
       </div>
     </div>
   );
