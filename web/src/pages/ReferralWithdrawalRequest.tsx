@@ -21,9 +21,9 @@ export default function ReferralWithdrawalRequest() {
     queryFn: withdrawalApi.getBalance,
   });
 
-  // Guard: redirect if can't request
+  // Guard: redirect if withdrawals are disabled or user can't request
   useEffect(() => {
-    if (balance && !balance.can_request) {
+    if (balance && (!balance.is_withdrawal_enabled || !balance.can_request)) {
       navigate('/referral', { replace: true });
     }
   }, [balance, navigate]);

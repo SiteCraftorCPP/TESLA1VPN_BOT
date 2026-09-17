@@ -15,6 +15,7 @@ import { staggerContainer, staggerItem } from '@/components/motion/transitions';
 import { ChatIcon, CloseIcon, ImageIcon, PlusIcon, SendIcon } from '@/components/icons';
 import { usePlatform } from '@/platform';
 import { linkifyText } from '../utils/linkify';
+import { supportUserChatUrl } from '../utils/supportContact';
 
 const log = logger.createLogger('Support');
 
@@ -34,7 +35,7 @@ export default function Support() {
   const { t } = useTranslation();
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const queryClient = useQueryClient();
-  const { openTelegramLink, openLink } = usePlatform();
+  const { openLink } = usePlatform();
   const [selectedTicket, setSelectedTicket] = useState<TicketDetail | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -209,18 +210,12 @@ export default function Support() {
           message: t('support.contactSupport', { username: supportUsername }),
           buttonText: t('support.writeButton'),
           buttonAction: () => {
-            log.debug('Button clicked, opening:', supportUsername);
-
-            // Extract username without @
-            const username = supportUsername.startsWith('@')
-              ? supportUsername.slice(1)
-              : supportUsername;
-
-            const webUrl = `https://t.me/${username}`;
-            log.debug('Web URL:', webUrl);
-
-            // Use platform's openTelegramLink
-            openTelegramLink(webUrl);
+            log.debug('Button clicked, opening user chat:', supportUsername);
+            const webUrl = supportUserChatUrl(supportUsername);
+            if (webUrl) {
+              // openTelegramLink() from Mini App returns to the host bot.
+              openLink(webUrl, { tryInstantView: false });
+            }
           },
         };
       }
@@ -244,18 +239,11 @@ export default function Support() {
         message: t('support.contactSupport', { username: supportUsername }),
         buttonText: t('support.writeButton'),
         buttonAction: () => {
-          log.debug('Fallback button clicked, opening:', supportUsername);
-
-          // Extract username without @
-          const username = supportUsername.startsWith('@')
-            ? supportUsername.slice(1)
-            : supportUsername;
-
-          const webUrl = `https://t.me/${username}`;
-          log.debug('Fallback opening URL:', webUrl);
-
-          // Use platform's openTelegramLink
-          openTelegramLink(webUrl);
+          log.debug('Fallback button clicked, opening user chat:', supportUsername);
+          const webUrl = supportUserChatUrl(supportUsername);
+          if (webUrl) {
+            openLink(webUrl, { tryInstantView: false });
+          }
         },
       };
     };
@@ -366,10 +354,10 @@ export default function Support() {
               size="sm"
               className="shrink-0 whitespace-nowrap"
               onClick={() => {
-                const username = supportConfig.support_username!.startsWith('@')
-                  ? supportConfig.support_username!.slice(1)
-                  : supportConfig.support_username!;
-                openTelegramLink(`https://t.me/${username}`);
+                const webUrl = supportUserChatUrl(supportConfig.support_username);
+                if (webUrl) {
+                  openLink(webUrl, { tryInstantView: false });
+                }
               }}
             >
               {t('support.writeButton')}

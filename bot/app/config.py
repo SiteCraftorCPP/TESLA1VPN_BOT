@@ -287,7 +287,7 @@ class Settings(BaseSettings):
     REFERRAL_NOTIFICATION_RETRY_ATTEMPTS: int = 3
 
     # Настройки вывода реферального баланса
-    REFERRAL_WITHDRAWAL_ENABLED: bool = True  # Включить возможность вывода
+    REFERRAL_WITHDRAWAL_ENABLED: bool = False  # Временно выключен (mini app рефералка)
     REFERRAL_WITHDRAWAL_MIN_AMOUNT_KOPEKS: int = 100000  # Мин. сумма вывода (1000₽)
     REFERRAL_WITHDRAWAL_COOLDOWN_DAYS: int = 30  # Частота запросов на вывод
     REFERRAL_WITHDRAWAL_ONLY_REFERRAL_BALANCE: bool = True  # Только реф. баланс (False = реф + свой)
