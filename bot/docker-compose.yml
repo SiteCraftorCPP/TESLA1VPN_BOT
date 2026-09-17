@@ -85,10 +85,10 @@ services:
       retries: 3
       start_period: 30s
     extra_hosts:
-    - projecthub.su:72.56.26.105
-    - www.projecthub.su:72.56.26.105
-    - bot.projecthub.su:72.56.26.105
-    - cabinet.projecthub.su:72.56.26.105
+    - projecthub.su:89.22.233.21
+    - www.projecthub.su:89.22.233.21
+    - bot.projecthub.su:89.22.233.21
+    - cabinet.projecthub.su:89.22.233.21
     dns:
     - 8.8.8.8
     - 1.1.1.1
