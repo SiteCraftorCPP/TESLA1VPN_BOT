@@ -11,6 +11,75 @@ from app.database.models import Subscription
 logger = structlog.get_logger(__name__)
 
 
+def extract_squad_uuids(squads: list | None) -> list[str]:
+    """Normalize squad list from Remnawave API (UUID strings or {uuid: ...} objects)."""
+    result: list[str] = []
+    for item in squads or []:
+        if isinstance(item, str):
+            value = item.strip()
+            if value:
+                result.append(value)
+        elif isinstance(item, dict):
+            value = (item.get('uuid') or item.get('id') or '').strip()
+            if value:
+                result.append(value)
+    return result
+
+
+def normalize_remnawave_subscription_url(
+    subscription_url: str | None,
+    short_uuid: str | None = None,
+) -> str | None:
+    """Convert Remnawave subscription *page* URL to the API URL Happ/clients expect.
+
+    Panel v2+ may return ``https://domain/{shortUuid}`` (HTML page). VPN clients need
+    ``https://domain/api/sub/{shortUuid}`` (JSON/base64 config).
+    """
+    if not subscription_url:
+        return subscription_url
+
+    url = subscription_url.strip()
+    if not url:
+        return subscription_url
+
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return subscription_url
+
+    path = (parsed.path or '').rstrip('/')
+
+    if '/api/sub/' in path:
+        return urlunparse(parsed._replace(path=path))
+
+    short = (short_uuid or '').strip()
+    if not short:
+        segment = path.lstrip('/').split('/')[0] if path else ''
+        if segment and segment not in ('sub', 'api'):
+            short = segment
+
+    if not short:
+        return subscription_url
+
+    return urlunparse(parsed._replace(path=f'/api/sub/{short}'))
+
+
+def normalize_panel_subscription_url(
+    panel_data: dict | None = None,
+    *,
+    subscription_url: str | None = None,
+    short_uuid: str | None = None,
+) -> str | None:
+    """Normalize subscription URL from a Remnawave panel user payload."""
+    if panel_data:
+        subscription_url = (
+            subscription_url
+            or panel_data.get('subscriptionUrl')
+            or panel_data.get('subscription_url')
+        )
+        short_uuid = short_uuid or panel_data.get('shortUuid') or panel_data.get('short_uuid')
+    return normalize_remnawave_subscription_url(subscription_url, short_uuid)
+
+
 async def cleanup_duplicate_subscriptions(db: AsyncSession) -> int:
     # В multi-tariff режиме несколько подписок у пользователя — это нормально
     if settings.is_multi_tariff_enabled():
@@ -58,15 +127,59 @@ def get_display_subscription_link(subscription: Subscription | None) -> str | No
     return base_link
 
 
+def get_subscription_webapp_url(subscription_link: str | None) -> str | None:
+    """WebApp URL on cabinet domain that opens Happ (not panel HTML page)."""
+    if not subscription_link:
+        return None
+
+    redirect = get_happ_cryptolink_redirect_link(subscription_link)
+    if redirect:
+        return redirect
+
+    cabinet_base = (settings.MINIAPP_CUSTOM_URL or settings.CABINET_URL or '').strip().rstrip('/')
+    if cabinet_base:
+        return f'{cabinet_base}/connection'
+
+    return subscription_link
+
+
+def _resolve_happ_cryptolink_target(subscription_link: str) -> str:
+    """Turn panel/https subscription URL into happ://crypt deep link for clients."""
+    from app.utils.happ_crypto_link import ensure_happ_crypto_link
+
+    link = (subscription_link or '').strip()
+    if not link:
+        return link
+
+    if link.lower().startswith('happ://crypt'):
+        return link
+
+    source_url = link
+    if link.lower().startswith('happ://'):
+        source_url = 'https://' + link[len('happ://') :]
+
+    crypto = ensure_happ_crypto_link(source_url)
+    if crypto:
+        return crypto
+
+    if source_url.startswith(('http://', 'https://')):
+        scheme = convert_subscription_link_to_happ_scheme(source_url)
+        if scheme:
+            return scheme
+
+    return link
+
+
 def get_happ_cryptolink_redirect_link(subscription_link: str | None) -> str | None:
     if not subscription_link:
         return None
 
+    target = _resolve_happ_cryptolink_target(subscription_link)
     template = settings.get_happ_cryptolink_redirect_template()
     if not template:
         return None
 
-    encoded_link = quote(subscription_link, safe='')
+    encoded_link = quote(target, safe='')
     replacements = {
         '{subscription_link}': encoded_link,
         '{link}': encoded_link,
