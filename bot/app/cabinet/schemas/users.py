@@ -340,6 +340,10 @@ class UpdateSubscriptionRequest(BaseModel):
     # For create new subscription
     is_trial: bool | None = Field(None, description='Is trial subscription')
     device_limit: int | None = Field(None, ge=1, description='Device limit')
+    record_issue: bool = Field(
+        default=False,
+        description='Record as admin-issued Happ handoff (shows up in issued-subscriptions list)',
+    )
 
 
 class UpdateSubscriptionResponse(BaseModel):
@@ -348,6 +352,51 @@ class UpdateSubscriptionResponse(BaseModel):
     success: bool
     message: str
     subscription: UserSubscriptionInfo | None = None
+    subscription_url: str | None = None
+    happ_link: str | None = None
+
+
+class IssueSubscriptionRequest(BaseModel):
+    """Admin-issued Happ subscription URL(s), optionally bound to a contact."""
+
+    tariff_id: int
+    days: int = Field(default=365, ge=1, le=3650)
+    count: int = Field(default=1, ge=1, le=50)
+    note: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=255)
+    telegram: str | None = Field(default=None, max_length=64)
+
+
+class IssuedSubscriptionItem(BaseModel):
+    """One issued subscription share payload."""
+
+    event_id: int | None = None
+    user_id: int
+    subscription_id: int | None = None
+    note: str | None = None
+    days: int | None = None
+    created_user: bool = False
+    action: str | None = None
+    admin_id: int | None = None
+    subscription_url: str | None = None
+    happ_link: str | None = None
+    expires_at: datetime | None = None
+    status: str | None = None
+    tariff_name: str | None = None
+    user_label: str | None = None
+    issued_at: datetime | None = None
+
+
+class IssueSubscriptionResponse(BaseModel):
+    items: list[IssuedSubscriptionItem]
+    total: int
+
+
+class IssuedSubscriptionListResponse(BaseModel):
+    items: list[IssuedSubscriptionItem]
+    total: int
+    offset: int = 0
+    limit: int = 50
 
 
 class UpdateUserStatusRequest(BaseModel):

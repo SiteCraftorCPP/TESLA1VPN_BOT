@@ -7,6 +7,7 @@ from typing import Any
 import structlog
 from yookassa import Configuration, Payment as YooKassaPayment
 from yookassa.domain.common.confirmation_type import ConfirmationType
+from yookassa.domain.exceptions.forbidden_error import ForbiddenError as YooKassaForbiddenError
 from yookassa.domain.exceptions.not_found_error import NotFoundError as YooKassaNotFoundError
 from yookassa.domain.request.payment_request_builder import PaymentRequestBuilder
 
@@ -282,8 +283,14 @@ class YooKassaService:
                 'description_from_yk': response.description,
                 'test_mode': response.test if hasattr(response, 'test') else None,
             }
+        except YooKassaForbiddenError as e:
+            logger.warning(
+                'YooKassa отклонила создание платежа (forbidden — проверьте магазин/метод оплаты)',
+                error=e,
+            )
+            return None
         except Exception as e:
-            logger.error('Ошибка создания платежа YooKassa', error=e, exc_info=True)
+            logger.warning('Ошибка создания платежа YooKassa', error=e)
             return None
 
     async def create_sbp_payment(
@@ -398,8 +405,14 @@ class YooKassaService:
                 'description_from_yk': response.description,
                 'test_mode': response.test if hasattr(response, 'test') else None,
             }
+        except YooKassaForbiddenError as e:
+            logger.warning(
+                'YooKassa отклонила создание платежа СБП (forbidden — проверьте магазин/СБП в ЛК)',
+                error=e,
+            )
+            return None
         except Exception as e:
-            logger.error('Ошибка создания платежа YooKassa СБП', error=e, exc_info=True)
+            logger.warning('Ошибка создания платежа YooKassa СБП', error=e)
             return None
 
     async def get_payment_info(self, payment_id_in_yookassa: str) -> dict[str, Any] | None:

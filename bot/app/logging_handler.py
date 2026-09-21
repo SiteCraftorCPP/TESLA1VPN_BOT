@@ -77,6 +77,33 @@ IGNORED_LOGGER_PREFIXES: Final[tuple[str, ...]] = (
 )
 
 
+def _is_expected_noise_error(event_dict: dict[str, Any]) -> bool:
+    """Errors that should not spam the admin error topic."""
+    exc: BaseException | None = None
+    exc_info = event_dict.get('exc_info')
+    if isinstance(exc_info, tuple) and len(exc_info) > 1 and isinstance(exc_info[1], BaseException):
+        exc = exc_info[1]
+    if exc is None:
+        for key in ('error', 'exc', 'exception', 'e', 'e2', 'err'):
+            candidate = event_dict.get(key)
+            if isinstance(candidate, BaseException):
+                exc = candidate
+                break
+    if exc is not None:
+        name = type(exc).__name__
+        text = str(exc).lower()
+        if name in ('ForbiddenError', 'YooKassaForbiddenError'):
+            return True
+        if name == 'TelegramBadRequest' and 'message is too long' in text:
+            return True
+        if name == 'TelegramForbiddenError' and 'bot was blocked' in text:
+            return True
+    event_msg = str(event_dict.get('event', '')).lower()
+    if 'yookassa' in event_msg and 'платеж' in event_msg:
+        return True
+    return False
+
+
 def _is_transient_remnawave_error(event_dict: dict[str, Any]) -> bool:
     """True when the log's exception is a RemnaWaveTransientError (slow / briefly
     unreachable panel). Checked by class name + cause chain so we don't import the
@@ -186,6 +213,9 @@ class TelegramNotifierProcessor:
         # 4b. Skip transient RemnaWave panel failures (slow / briefly unreachable)
         # — forwarding them would spam the admin chat on every slow-panel request.
         if _is_transient_remnawave_error(event_dict):
+            return event_dict
+
+        if _is_expected_noise_error(event_dict):
             return event_dict
 
         # 5. Bot not initialized yet — skip

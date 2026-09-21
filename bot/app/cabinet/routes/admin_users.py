@@ -50,6 +50,16 @@ from app.database.models import (
     UserPromoGroup,
     UserStatus,
 )
+from app.services.admin_issue_subscription import (
+    IssueSubscriptionError,
+    build_share_links,
+    grant_or_extend_subscription,
+    list_issued_subscriptions,
+    load_tariff_or_raise,
+    record_issued_event,
+    resolve_or_create_user,
+    validate_issue_batch,
+)
 from app.services.permission_service import PermissionService
 from app.utils.subscription_utils import coerce_panel_device_limit
 from app.utils.timezone import panel_datetime_to_utc
@@ -97,6 +107,10 @@ from ..schemas.users import (
     UpdateRestrictionsResponse,
     UpdateSubscriptionRequest,
     UpdateSubscriptionResponse,
+    IssueSubscriptionRequest,
+    IssueSubscriptionResponse,
+    IssuedSubscriptionItem,
+    IssuedSubscriptionListResponse,
     UpdateUserStatusRequest,
     UpdateUserStatusResponse,
     UserAvailableTariffItem,
@@ -474,6 +488,51 @@ async def _sync_subscription_to_panel(
         return {'error': 'Ошибка синхронизации пользователя с панелью'}
 
 
+async def _subscription_mutation_response(
+    db: AsyncSession,
+    subscription: Subscription,
+    message: str,
+) -> UpdateSubscriptionResponse:
+    url, happ = build_share_links(subscription)
+    return UpdateSubscriptionResponse(
+        success=True,
+        message=message,
+        subscription=await _build_subscription_info_async(db, subscription),
+        subscription_url=url,
+        happ_link=happ,
+    )
+
+
+def _issued_item_from_grant(
+    *,
+    user: User,
+    subscription: Subscription,
+    days: int,
+    note: str | None,
+    created_user: bool,
+    action: str,
+    admin_id: int,
+) -> IssuedSubscriptionItem:
+    url, happ = build_share_links(subscription)
+    tariff_name = subscription.tariff.name if getattr(subscription, 'tariff', None) else None
+    return IssuedSubscriptionItem(
+        user_id=user.id,
+        subscription_id=subscription.id,
+        note=note,
+        days=days,
+        created_user=created_user,
+        action=action,
+        admin_id=admin_id,
+        subscription_url=url,
+        happ_link=happ,
+        expires_at=subscription.end_date,
+        status=subscription.status,
+        tariff_name=tariff_name,
+        user_label=user.full_name,
+        issued_at=datetime.now(UTC),
+    )
+
+
 # === List & Search ===
 
 
@@ -663,6 +722,121 @@ async def get_users_stats(
         active_week=active_week,
         active_month=active_month,
     )
+
+
+@router.get('/issued-subscriptions', response_model=IssuedSubscriptionListResponse)
+async def get_issued_subscriptions(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    admin: User = Depends(require_permission('users:subscription')),
+    db: AsyncSession = Depends(get_cabinet_db),
+):
+    """List subscriptions previously issued by admins for manual Happ handoff."""
+    items, total = await list_issued_subscriptions(db, offset=offset, limit=limit)
+    return IssuedSubscriptionListResponse(
+        items=[IssuedSubscriptionItem.model_validate(item) for item in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.post('/issued-subscriptions', response_model=IssueSubscriptionResponse)
+async def issue_subscriptions(
+    request: IssueSubscriptionRequest,
+    admin: User = Depends(require_permission('users:subscription')),
+    db: AsyncSession = Depends(get_cabinet_db),
+):
+    """Create/extend paid subscriptions and return Happ URLs for the admin to send."""
+    try:
+        validate_issue_batch(count=request.count, email=request.email, telegram=request.telegram)
+        tariff = await load_tariff_or_raise(db, request.tariff_id)
+    except IssueSubscriptionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    note = (request.note or '').strip() or None
+    issued: list[IssuedSubscriptionItem] = []
+
+    for index in range(request.count):
+        item_note = note
+        if request.count > 1 and note:
+            item_note = f'{note} #{index + 1}'
+        try:
+            user, created_user = await resolve_or_create_user(
+                db,
+                email=request.email,
+                telegram=request.telegram,
+                note=item_note,
+            )
+            subscription, action = await grant_or_extend_subscription(
+                db, user, tariff, request.days
+            )
+            await _sync_subscription_to_panel(db, user, subscription)
+            await db.refresh(subscription)
+            try:
+                await db.refresh(subscription, ['tariff'])
+            except Exception:
+                pass
+            await record_issued_event(
+                db,
+                admin_id=admin.id,
+                user_id=user.id,
+                subscription_id=subscription.id,
+                days=request.days,
+                note=item_note,
+                created_user=created_user,
+                action=action,
+            )
+            await PermissionService.log_action(
+                db,
+                user_id=admin.id,
+                action='issue_subscription',
+                resource_type='subscription',
+                resource_id=str(subscription.id),
+                details={
+                    'target_user_id': user.id,
+                    'days': request.days,
+                    'tariff_id': tariff.id,
+                    'created_user': created_user,
+                    'grant_action': action,
+                    'note': item_note,
+                },
+            )
+            await db.commit()
+            issued.append(
+                _issued_item_from_grant(
+                    user=user,
+                    subscription=subscription,
+                    days=request.days,
+                    note=item_note,
+                    created_user=created_user,
+                    action=action,
+                    admin_id=admin.id,
+                )
+            )
+        except IssueSubscriptionError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception(
+                'Failed to issue subscription',
+                admin_id=admin.id,
+                index=index,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Failed to issue subscription',
+            ) from None
+
+    logger.info(
+        'Admin issued subscriptions',
+        admin_id=admin.id,
+        count=len(issued),
+        days=request.days,
+        tariff_id=tariff.id,
+    )
+    return IssueSubscriptionResponse(items=issued, total=len(issued))
 
 
 # === User Detail ===
@@ -1242,12 +1416,22 @@ async def update_user_subscription(
         # Sync to Remnawave panel
         await _sync_subscription_to_panel(db, user, new_sub)
 
+        if request.record_issue:
+            await record_issued_event(
+                db,
+                admin_id=admin.id,
+                user_id=user.id,
+                subscription_id=new_sub.id,
+                days=days,
+                note=None,
+                created_user=False,
+                action='created',
+            )
+
         logger.info('Admin created subscription for user', admin_id=admin.id, user_id=user_id)
 
-        return UpdateSubscriptionResponse(
-            success=True,
-            message=f'Subscription created for {days} days',
-            subscription=await _build_subscription_info_async(db, new_sub),
+        return await _subscription_mutation_response(
+            db, new_sub, f'Subscription created for {days} days'
         )
 
     if not subscription:
@@ -1269,14 +1453,24 @@ async def update_user_subscription(
         # Sync to Remnawave panel
         await _sync_subscription_to_panel(db, user, subscription)
 
+        if request.record_issue:
+            await record_issued_event(
+                db,
+                admin_id=admin.id,
+                user_id=user.id,
+                subscription_id=subscription.id,
+                days=request.days,
+                note=None,
+                created_user=False,
+                action='extended',
+            )
+
         logger.info(
             'Admin extended subscription for user by days', admin_id=admin.id, user_id=user_id, days=request.days
         )
 
-        return UpdateSubscriptionResponse(
-            success=True,
-            message=f'Subscription extended by {request.days} days',
-            subscription=await _build_subscription_info_async(db, subscription),
+        return await _subscription_mutation_response(
+            db, subscription, f'Subscription extended by {request.days} days'
         )
 
     if request.action == 'shorten':

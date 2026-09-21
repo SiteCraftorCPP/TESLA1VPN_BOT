@@ -1309,16 +1309,27 @@ async def _show_privacy_policy_after_rules(
         return False
 
     if not policy.content or not policy.content.strip():
-        privacy_policy_text = get_privacy_policy(language)
-        if not privacy_policy_text or not privacy_policy_text.strip():
+        raw_default = get_privacy_policy(language)
+        if not raw_default or not raw_default.strip():
             logger.info('⚠️ Политика конфиденциальности включена, но дефолтный текст пустой, пропускаем показ')
             return False
+        privacy_policy_text = PrivacyPolicyService.prepare_registration_telegram_text(
+            raw_default,
+            language=language,
+        )
         logger.info(
             '🔒 Используется дефолтный текст политики конфиденциальности из локализации для языка', language=language
         )
     else:
-        privacy_policy_text = policy.content
+        privacy_policy_text = PrivacyPolicyService.prepare_registration_telegram_text(
+            policy.content,
+            language=language,
+        )
         logger.info('🔒 Используется политика конфиденциальности из БД для языка', language=language)
+
+    if not privacy_policy_text or not privacy_policy_text.strip():
+        logger.warning('⚠️ Политика конфиденциальности пуста после подготовки для Telegram')
+        return False
 
     try:
         await callback.message.edit_text(
@@ -1328,7 +1339,26 @@ async def _show_privacy_policy_after_rules(
         logger.info('🔒 Политика конфиденциальности отправлена пользователю', from_user_id=callback.from_user.id)
         return True
     except Exception as e:
-        logger.error('Ошибка при показе политики конфиденциальности', error=e, exc_info=True)
+        err_text = str(e).lower()
+        if 'message is too long' in err_text:
+            logger.warning(
+                'Политика конфиденциальности не помещается в сообщение Telegram, показываем ссылку на кабинет',
+                error=e,
+            )
+            cabinet_base = (settings.CABINET_URL or '').strip().rstrip('/')
+            if cabinet_base and cabinet_base != settings._CABINET_URL_DEFAULT:
+                privacy_policy_text = (
+                    '🔒 <b>Политика конфиденциальности</b>\n\n'
+                    f'Ознакомьтесь с документом в личном кабинете:\n'
+                    f'<a href="{cabinet_base}/info?tab=privacy">Открыть политику</a>'
+                )
+            else:
+                privacy_policy_text = (
+                    '🔒 <b>Политика конфиденциальности</b>\n\n'
+                    'Полный текст доступен в личном кабинете сервиса.'
+                )
+        else:
+            logger.warning('Ошибка при показе политики конфиденциальности', error=e)
         try:
             await callback.message.answer(
                 privacy_policy_text, reply_markup=get_privacy_policy_keyboard(language), parse_mode='HTML'
@@ -1340,7 +1370,7 @@ async def _show_privacy_policy_after_rules(
             )
             return True
         except Exception as e2:
-            logger.error('Критическая ошибка при отправке политики конфиденциальности', e2=e2, exc_info=True)
+            logger.warning('Не удалось отправить политику конфиденциальности', error=e2)
             return False
 
 

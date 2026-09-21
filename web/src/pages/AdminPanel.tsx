@@ -155,6 +155,12 @@ const sections: AdminSection[] = [
     items: [
       { name: 'admin.nav.users', icon: 'users', to: '/admin/users', permission: 'users:read' },
       {
+        name: 'admin.nav.issuedSubscriptions',
+        icon: 'send',
+        to: '/admin/issued-subscriptions',
+        permission: 'users:subscription',
+      },
+      {
         name: 'admin.nav.bulkActions',
         icon: 'list-checks',
         to: '/admin/bulk-actions',

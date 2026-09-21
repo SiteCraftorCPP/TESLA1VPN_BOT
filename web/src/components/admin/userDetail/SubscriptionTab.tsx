@@ -126,6 +126,7 @@ export interface SubscriptionTabProps {
   confirmingAction: string | null;
   onInlineConfirm: (key: string, fn: () => Promise<void>) => void;
   onUpdateSubscription: (overrideAction?: string) => Promise<void>;
+  onIssueYear: () => Promise<void>;
   onSetDeviceLimit: (newLimit: number) => Promise<void>;
   onAddTraffic: (gb: number) => Promise<void>;
   onRemoveTraffic: (purchaseId: number) => Promise<void>;
@@ -189,6 +190,7 @@ export function SubscriptionTab(props: SubscriptionTabProps) {
     confirmingAction,
     onInlineConfirm,
     onUpdateSubscription,
+    onIssueYear,
     onSetDeviceLimit,
     onAddTraffic,
     onRemoveTraffic,
@@ -207,6 +209,27 @@ export function SubscriptionTab(props: SubscriptionTabProps) {
 
   return (
     <div className="space-y-4">
+      {hasPermission('users:subscription') && (
+        <div className="rounded-xl border border-accent-500/20 bg-accent-500/5 p-4">
+          <div className="mb-1 text-sm font-medium text-dark-100">
+            {t('admin.users.detail.subscription.issueYear')}
+          </div>
+          <p className="mb-3 text-xs text-dark-400">
+            {t('admin.users.detail.subscription.issueYearHint')}
+          </p>
+          <button
+            type="button"
+            onClick={() => void onIssueYear()}
+            disabled={actionLoading}
+            className="btn-primary w-full"
+          >
+            {actionLoading
+              ? t('admin.users.detail.subscription.issuingYear')
+              : t('admin.users.detail.subscription.issueYearButton')}
+          </button>
+        </div>
+      )}
+
       {/* Multi-subscription: Level 1 — subscription list */}
       {userSubscriptions.length > 1 && !subscriptionDetailView && (
         <>

@@ -343,12 +343,54 @@ export interface UpdateSubscriptionRequest {
   device_limit?: number;
   traffic_gb?: number;
   traffic_purchase_id?: number;
+  record_issue?: boolean;
 }
 
 export interface UpdateSubscriptionResponse {
   success: boolean;
   message: string;
   subscription: UserSubscriptionInfo | null;
+  subscription_url?: string | null;
+  happ_link?: string | null;
+}
+
+export interface IssueSubscriptionRequest {
+  tariff_id: number;
+  days?: number;
+  count?: number;
+  note?: string;
+  email?: string;
+  telegram?: string;
+}
+
+export interface IssuedSubscriptionItem {
+  event_id: number | null;
+  user_id: number;
+  subscription_id: number | null;
+  note: string | null;
+  days: number | null;
+  created_user: boolean;
+  action: string | null;
+  admin_id: number | null;
+  subscription_url: string | null;
+  happ_link: string | null;
+  expires_at: string | null;
+  status: string | null;
+  tariff_name: string | null;
+  user_label: string | null;
+  issued_at: string | null;
+}
+
+export interface IssueSubscriptionResponse {
+  items: IssuedSubscriptionItem[];
+  total: number;
+}
+
+export interface IssuedSubscriptionListResponse {
+  items: IssuedSubscriptionItem[];
+  total: number;
+  offset: number;
+  limit: number;
 }
 
 export interface UpdateUserStatusResponse {
@@ -487,6 +529,19 @@ export const adminUsersApi = {
     data: UpdateSubscriptionRequest,
   ): Promise<UpdateSubscriptionResponse> => {
     const response = await apiClient.post(`/cabinet/admin/users/${userId}/subscription`, data);
+    return response.data;
+  },
+
+  issueSubscriptions: async (data: IssueSubscriptionRequest): Promise<IssueSubscriptionResponse> => {
+    const response = await apiClient.post('/cabinet/admin/users/issued-subscriptions', data);
+    return response.data;
+  },
+
+  getIssuedSubscriptions: async (params?: {
+    offset?: number;
+    limit?: number;
+  }): Promise<IssuedSubscriptionListResponse> => {
+    const response = await apiClient.get('/cabinet/admin/users/issued-subscriptions', { params });
     return response.data;
   },
 

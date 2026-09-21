@@ -27,7 +27,9 @@ import { BalanceTab } from '../components/admin/userDetail/BalanceTab';
 import { TicketsTab } from '../components/admin/userDetail/TicketsTab';
 import { InfoTab } from '../components/admin/userDetail/InfoTab';
 import { SubscriptionTab } from '../components/admin/userDetail/SubscriptionTab';
+import { IssuedSubscriptionModal, type IssuedShareItem } from '../components/admin/IssuedSubscriptionModal';
 import { toNumber } from '../utils/inputHelpers';
+import { getApiErrorMessage } from '../utils/api-error';
 import { usePermissionStore } from '../store/permissions';
 
 // (Subscription-tab helpers: getCountryFlag / PlusIcon / MinusIcon /
@@ -96,6 +98,7 @@ export default function AdminUserDetail() {
 
   // Traffic packages
   const [selectedTrafficGb, setSelectedTrafficGb] = useState<string>('');
+  const [issuedShare, setIssuedShare] = useState<IssuedShareItem[] | null>(null);
 
   // Devices
   const [devices, setDevices] = useState<
@@ -364,10 +367,71 @@ export default function AdminUserDetail() {
             }
           : {}),
       };
-      await adminUsersApi.updateSubscription(userId, data);
+      const result = await adminUsersApi.updateSubscription(userId, data);
       await loadUser();
+      if (action === 'create' && (result.happ_link || result.subscription_url)) {
+        setIssuedShare([
+          {
+            happ_link: result.happ_link ?? null,
+            subscription_url: result.subscription_url ?? null,
+            expires_at: result.subscription?.end_date ?? null,
+            note: user?.full_name ?? null,
+            user_id: userId,
+            user_label: user?.full_name ?? null,
+          },
+        ]);
+      }
     } catch (error) {
       console.error('Failed to update subscription:', error);
+      notify.error(getApiErrorMessage(error, t('admin.users.detail.subscription.updateError')));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleIssueYear = async () => {
+    if (!userId) return;
+    const subs = user?.subscriptions ?? [];
+    const targetSubId = activeSubscriptionId ?? subs[0]?.id ?? null;
+    const tariffId = selectedTariffId ?? tariffs.find((item) => item.is_available)?.id ?? null;
+    if (!targetSubId && !tariffId) {
+      notify.error(t('admin.users.detail.subscription.selectTariff'));
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const data: UpdateSubscriptionRequest = targetSubId
+        ? {
+            action: 'extend',
+            days: 365,
+            subscription_id: targetSubId,
+            record_issue: true,
+          }
+        : {
+            action: 'create',
+            days: 365,
+            ...(tariffId ? { tariff_id: tariffId } : {}),
+            record_issue: true,
+          };
+      const result = await adminUsersApi.updateSubscription(userId, data);
+      await loadUser();
+      if (result.happ_link || result.subscription_url) {
+        setIssuedShare([
+          {
+            happ_link: result.happ_link ?? null,
+            subscription_url: result.subscription_url ?? null,
+            expires_at: result.subscription?.end_date ?? null,
+            note: user?.full_name ?? null,
+            user_id: userId,
+            user_label: user?.full_name ?? null,
+          },
+        ]);
+      } else {
+        notify.success(t('admin.users.detail.subscription.issuedNoLink'));
+      }
+    } catch (error) {
+      console.error('Failed to issue yearly subscription:', error);
+      notify.error(getApiErrorMessage(error, t('admin.users.detail.subscription.updateError')));
     } finally {
       setActionLoading(false);
     }
@@ -888,6 +952,7 @@ export default function AdminUserDetail() {
             confirmingAction={confirmingAction}
             onInlineConfirm={handleInlineConfirm}
             onUpdateSubscription={handleUpdateSubscription}
+            onIssueYear={handleIssueYear}
             onSetDeviceLimit={handleSetDeviceLimit}
             onAddTraffic={handleAddTraffic}
             onRemoveTraffic={handleRemoveTraffic}
@@ -949,6 +1014,12 @@ export default function AdminUserDetail() {
           <ReferralsTab user={user} userId={userId} onUserRefresh={loadUser} />
         )}
       </div>
+
+      <IssuedSubscriptionModal
+        open={Boolean(issuedShare?.length)}
+        items={issuedShare ?? []}
+        onClose={() => setIssuedShare(null)}
+      />
     </div>
   );
 }

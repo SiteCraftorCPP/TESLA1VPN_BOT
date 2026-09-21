@@ -1,3 +1,5 @@
+import html
+import re
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -171,3 +173,45 @@ class PrivacyPolicyService:
             return [normalized[:max_len]]
 
         return pages
+
+    @classmethod
+    def _strip_html_for_telegram(cls, content: str) -> str:
+        """Info-page HTML or legacy markup → plain text safe for Telegram HTML mode."""
+        if not content:
+            return ''
+        text = re.sub(r'<\s*br\s*/?\s*>', '\n', content, flags=re.IGNORECASE)
+        text = re.sub(r'</\s*p\s*>', '\n\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<\s*li\s*>', '• ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</\s*li\s*>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', '', text)
+        text = html.unescape(text)
+        return re.sub(r'\n{3,}', '\n\n', text).strip()
+
+    @classmethod
+    def prepare_registration_telegram_text(cls, content: str, *, language: str = 'ru') -> str:
+        """Fit privacy policy into a single Telegram message (4096 char limit)."""
+        plain = cls._strip_html_for_telegram(content)
+        if not plain:
+            return ''
+
+        cabinet_base = (settings.CABINET_URL or '').strip().rstrip('/')
+        if cabinet_base and cabinet_base != settings._CABINET_URL_DEFAULT:
+            full_link = f'{cabinet_base}/info?tab=privacy'
+            footer_ru = f'\n\n📄 <a href="{full_link}">Полный текст в личном кабинете</a>'
+            footer_en = f'\n\n📄 <a href="{full_link}">Full text in the cabinet</a>'
+        else:
+            footer_ru = '\n\n📄 Полный текст доступен в личном кабинете сервиса.'
+            footer_en = '\n\n📄 Full text is available in the service cabinet.'
+        footer = footer_en if language.startswith('en') else footer_ru
+
+        truncated_note_ru = '\n\n<i>Показана начальная часть документа.</i>'
+        truncated_note_en = '\n\n<i>Showing the beginning of the document.</i>'
+        truncated_note = truncated_note_en if language.startswith('en') else truncated_note_ru
+
+        # Reserve space for footer + accept/decline keyboard context (~200 chars buffer).
+        max_body = 4096 - len(footer) - len(truncated_note) - 40
+        pages = cls.split_content_into_pages(plain, max_length=max(500, max_body))
+        body = pages[0]
+        if len(pages) > 1:
+            body += truncated_note
+        return body + footer
