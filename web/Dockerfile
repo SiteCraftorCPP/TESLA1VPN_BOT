@@ -15,8 +15,8 @@ COPY . .
 # Build arguments for environment variables
 ARG VITE_API_URL=/api
 ARG VITE_TELEGRAM_BOT_USERNAME
-ARG VITE_APP_NAME=Cabinet
-ARG VITE_APP_LOGO=V
+ARG VITE_APP_NAME=Хамелеон
+ARG VITE_APP_LOGO=Х
 
 # Set environment variables for build
 ENV VITE_API_URL=$VITE_API_URL

@@ -420,7 +420,7 @@
     "trial": {
       "title": "Free Trial",
       "titlePaid": "Trial Subscription",
-      "description": "Try our VPN service!",
+      "description": "Try Chameleon VPN!",
       "days": "days",
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",

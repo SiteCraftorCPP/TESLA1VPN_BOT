@@ -442,7 +442,7 @@
     "trial": {
       "title": "Бесплатный пробный период",
       "titlePaid": "Пробная подписка",
-      "description": "Попробуйте наш VPN сервис!",
+      "description": "Попробуйте VPN «Хамелеон»!",
       "days": "дней",
       "days_one": "{{count}} день",
       "days_few": "{{count}} дня",

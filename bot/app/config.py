@@ -480,7 +480,7 @@ class Settings(BaseSettings):
     ACTIVATE_BUTTON_TEXT: str = 'активировать'
     PAYMENT_BALANCE_DESCRIPTION: str = 'Пополнение баланса'
     PAYMENT_SUBSCRIPTION_DESCRIPTION: str = 'Оплата подписки'
-    PAYMENT_SERVICE_NAME: str = 'Интернет-сервис'
+    PAYMENT_SERVICE_NAME: str = 'Хамелеон'
     PAYMENT_BALANCE_TEMPLATE: str = '{service_name} - {description}'
     PAYMENT_SUBSCRIPTION_TEMPLATE: str = '{service_name} - {description}'
 
@@ -886,8 +886,8 @@ class Settings(BaseSettings):
     MEDIA_IMAGE_MAX_DIMENSION: int = 2048
     MEDIA_JPEG_QUALITY: int = 85
     MINIAPP_PURCHASE_URL: str = ''
-    MINIAPP_SERVICE_NAME_EN: str = 'Bedolaga VPN'
-    MINIAPP_SERVICE_NAME_RU: str = 'Bedolaga VPN'
+    MINIAPP_SERVICE_NAME_EN: str = 'Chameleon'
+    MINIAPP_SERVICE_NAME_RU: str = 'Хамелеон'
     MINIAPP_SERVICE_DESCRIPTION_EN: str = 'Secure & Fast Connection'
     MINIAPP_SERVICE_DESCRIPTION_RU: str = 'Безопасное и быстрое подключение'
     CONNECT_BUTTON_HAPP_DOWNLOAD_ENABLED: bool = False
@@ -1096,7 +1096,7 @@ class Settings(BaseSettings):
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
-    SMTP_FROM_NAME: str = 'VPN Service'
+    SMTP_FROM_NAME: str = 'Хамелеон'
     SMTP_USE_TLS: bool = True
     # Implicit TLS (SMTPS) — required for port 465. Auto-enabled when SMTP_PORT == 465.
     SMTP_USE_SSL: bool = False
@@ -1910,7 +1910,7 @@ class Settings(BaseSettings):
         desc_en = _clean(self.MINIAPP_SERVICE_DESCRIPTION_EN)
         desc_ru = _clean(self.MINIAPP_SERVICE_DESCRIPTION_RU)
 
-        default_name = name_en or name_ru or 'RemnaWave VPN'
+        default_name = name_en or name_ru or 'Хамелеон'
         default_description = desc_en or desc_ru or 'Secure & Fast Connection'
 
         return {
