@@ -700,7 +700,8 @@
         "description": "Pay via PAL24"
       },
       "platega": {
-        "description": "Pay via Platega"
+        "name": "Card & SBP",
+        "description": "Pay with bank card or Faster Payments (SBP)"
       },
       "wata": {
         "description": "Pay via Wata"

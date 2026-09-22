@@ -729,7 +729,8 @@
         "description": "Оплата через PAL24"
       },
       "platega": {
-        "description": "Оплата через Platega"
+        "name": "Карта и СБП",
+        "description": "Оплата банковской картой или через СБП"
       },
       "wata": {
         "description": "Оплата через Wata"
