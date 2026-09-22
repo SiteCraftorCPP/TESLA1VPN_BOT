@@ -20,7 +20,7 @@ async def main() -> None:
     subs: list[Subscription] = []
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Subscription).where(Subscription.status == SubscriptionStatus.ACTIVE)
+            select(Subscription).where(Subscription.status == SubscriptionStatus.ACTIVE.value)
         )
         subs = list(result.scalars().all())
         for sub in subs:
