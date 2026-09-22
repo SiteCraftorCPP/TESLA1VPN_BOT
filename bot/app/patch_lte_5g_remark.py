@@ -43,6 +43,12 @@ def main() -> None:
         desc = h.get('serverDescription') or ''
         new_remark = _swap_phone(remark)
         new_desc = _swap_phone(desc)
+        # LTE CDN host: force canonical label
+        if 'lte' in (h.get('path') or '').lower() or 'projectweb' in (h.get('address') or ''):
+            if PHONE in new_remark or new_remark.strip() in ('🇫🇷', 'LTE', '🇫🇷 LTE'):
+                new_remark = '🇫🇷 5G'
+            if PHONE in new_desc or new_desc.strip() in ('🇫🇷', 'LTE', '🇫🇷 LTE'):
+                new_desc = '🇫🇷 5G'
         if new_remark == remark and new_desc == desc:
             continue
         patch = {
