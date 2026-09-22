@@ -68,6 +68,22 @@ def main() -> None:
         patched += 1
     print('lte_5g_done', patched)
 
+    # Panel subscription payload check (first active short from env or skip)
+    import os
+
+    short = (os.environ.get('VERIFY_SUB_SHORT') or '').strip()
+    if short:
+        req = urllib.request.Request(
+            f'{base}/api/sub/{short}',
+            headers={'User-Agent': 'Happ/4.11.0 (iOS)'},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode()
+            print('verify_sub_len', len(raw), 'head', raw[:160])
+        except Exception as exc:
+            print('verify_sub_fail', exc)
+
 
 if __name__ == '__main__':
     main()

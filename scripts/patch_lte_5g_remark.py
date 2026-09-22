@@ -13,10 +13,37 @@ PHONE = '\U0001f4f1'  # 📱
 REMOTE = r"""
 set -e
 cd /opt/tesla1vpn && git pull origin main
-cd bot && docker compose build bot && docker compose up -d --force-recreate bot
-sleep 12
-docker exec remnawave_bot python app/patch_lte_5g_remark.py
-curl -sk 'https://projecthub.su/api/sub/Cb2j_LH614VtASaJ' -H 'User-Agent: Happ/4.11.0' | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else [d]; print([c.get('remarks') for c in items if '5G' in (c.get('remarks') or '') or '\U0001f4f1' in (c.get('remarks') or '')][:5])"
+docker cp /opt/tesla1vpn/bot/app/patch_lte_5g_remark.py remnawave_bot:/app/app/patch_lte_5g_remark.py
+SHORT=$(docker exec remnawave_bot_db psql -U remnawave_user -d remnawave_bot -tAc \
+  "SELECT remnawave_short_uuid FROM subscriptions WHERE status='active' AND remnawave_short_uuid IS NOT NULL ORDER BY id DESC LIMIT 1" | tr -d '[:space:]')
+echo "verify_short=$SHORT"
+docker exec -e VERIFY_SUB_SHORT="$SHORT" remnawave_bot python app/patch_lte_5g_remark.py
+
+docker exec remnawave_bot curl -sk "https://projecthub.su/api/sub/${SHORT}" -H "User-Agent: Happ/4.11.0" | docker exec -i remnawave_bot python -c "
+import sys, base64, json
+raw = sys.stdin.read().strip()
+phone = chr(0x1F4F1)
+print('body_len', len(raw))
+print('body_head', raw[:220])
+if not raw or raw[0] in '{[':
+    try:
+        d = json.loads(raw) if raw else {}
+        print('json', d)
+    except Exception:
+        pass
+    raise SystemExit(0)
+try:
+    t = base64.b64decode(raw).decode('utf-8', 'replace')
+except Exception as e:
+    print('b64_err', e)
+    raise SystemExit(0)
+for line in t.splitlines():
+    if '#' in line:
+        tag = line.split('#')[-1]
+        if phone in tag or '5G' in tag or 'lte' in line.lower():
+            print('tag', tag)
+"
+
 echo LTE_5G_OK
 """
 
