@@ -8,7 +8,7 @@ import re
 import urllib.request
 
 from app.config import settings
-from app.database.crud.system_setting import set_setting_value
+from app.database.crud.system_setting import upsert_system_setting
 from app.database.database import AsyncSessionLocal
 
 BRAND_RU = 'Хамелеон'
@@ -32,7 +32,7 @@ def _api(method: str, path: str, body: dict | None = None) -> dict:
 
 async def _db_name() -> None:
     async with AsyncSessionLocal() as db:
-        await set_setting_value(db, 'CABINET_BRANDING_NAME', BRAND_RU)
+        await upsert_system_setting(db, 'CABINET_BRANDING_NAME', BRAND_RU)
         await db.commit()
 
 
