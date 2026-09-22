@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import re
 import urllib.request
@@ -12,6 +13,8 @@ from app.database.crud.system_setting import upsert_system_setting
 from app.database.database import AsyncSessionLocal
 
 BRAND_RU = 'Хамелеон'
+# HTTP response headers must be ASCII (Node rejects Cyrillic in content-disposition).
+BRAND_ASCII_FILENAME = 'Hameleon'
 PROFILE_URL = 'https://cabinet.projecthub.su/miniapp/profile.html'
 
 
@@ -44,8 +47,8 @@ def main() -> None:
     s = _api('GET', '/api/subscription-settings')['response']
     headers = dict(s.get('customResponseHeaders') or {})
     headers['profile-web-page-url'] = PROFILE_URL
-    headers['profile-title'] = BRAND_RU
-    headers['content-disposition'] = f'attachment; filename="{BRAND_RU}"'
+    headers['profile-title'] = 'base64:' + base64.b64encode(BRAND_RU.encode('utf-8')).decode('ascii')
+    headers['content-disposition'] = f'attachment; filename="{BRAND_ASCII_FILENAME}"'
     patch = {
         'uuid': s['uuid'],
         'profileTitle': BRAND_RU,
