@@ -9,6 +9,7 @@ from app.database.models import User
 from app.utils.pricing_utils import (
     format_period_description,
 )
+from app.utils.subscription_utils import connected_squad_id_set
 from app.utils.timezone import format_local_datetime
 
 from .common import logger
@@ -151,7 +152,7 @@ async def _prepare_subscription_summary(
 
     # Resolve country display names (still needed for the summary text)
     countries = await _get_available_countries(db_user.promo_group_id)
-    selected_country_ids = set(connected_squads)
+    selected_country_ids = connected_squad_id_set(connected_squads)
     selected_countries_names: list[str] = [
         html.escape(country['name']) for country in countries if country['uuid'] in selected_country_ids
     ]

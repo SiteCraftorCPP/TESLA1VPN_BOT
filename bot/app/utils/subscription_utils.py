@@ -26,6 +26,16 @@ def extract_squad_uuids(squads: list | None) -> list[str]:
     return result
 
 
+def normalize_connected_squads(squads: list | None) -> list[str]:
+    """Canonical squad UUID list for DB storage and RemnaWave API."""
+    return extract_squad_uuids(squads)
+
+
+def connected_squad_id_set(squads: list | None) -> set[str]:
+    """Safe set() for connected_squads (never pass raw dict items to set())."""
+    return set(extract_squad_uuids(squads))
+
+
 def normalize_remnawave_subscription_url(
     subscription_url: str | None,
     short_uuid: str | None = None,

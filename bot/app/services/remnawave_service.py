@@ -36,13 +36,27 @@ from app.external.remnawave_api import (
 from app.services.subscription_service import get_traffic_reset_strategy
 from app.utils.subscription_utils import (
     coerce_panel_device_limit,
+    connected_squad_id_set,
     device_limit_needs_heal,
+    extract_squad_uuids,
+    normalize_panel_subscription_url,
     resolve_hwid_device_limit_for_payload,
 )
+from app.utils.happ_crypto_link import ensure_happ_crypto_link
 from app.utils.timezone import get_local_timezone
 
 
 logger = structlog.get_logger(__name__)
+
+
+def _resolve_subscription_crypto_link(panel_user: dict[str, Any], subscription_url: str | None) -> str | None:
+    crypto = panel_user.get('subscriptionCryptoLink') or (panel_user.get('happ') or {}).get('cryptoLink', '')
+    if crypto:
+        return crypto
+    return ensure_happ_crypto_link(
+        subscription_url,
+        short_uuid=panel_user.get('shortUuid'),
+    )
 
 
 def _get_user_traffic_bytes(panel_user: dict[str, Any]) -> int:
@@ -2065,8 +2079,12 @@ class RemnaWaveService:
                             remnawave_uuid=panel_uuid,
                             remnawave_short_id=_short_id,
                             remnawave_short_uuid=panel_user.get('shortUuid'),
-                            subscription_url=panel_user.get('subscriptionUrl', ''),
-                            subscription_crypto_link=panel_user.get('subscriptionCryptoLink', ''),
+                            subscription_url=normalize_panel_subscription_url(panel_user) or '',
+                            subscription_crypto_link=_resolve_subscription_crypto_link(
+                                panel_user,
+                                normalize_panel_subscription_url(panel_user),
+                            )
+                            or '',
                             tariff_id=_matched_tariff_id,
                         )
                         db.add(new_sub)
@@ -2099,24 +2117,19 @@ class RemnaWaveService:
                     # traffic_limit_gb: bot is source of truth, do not overwrite from panel
 
                     # Update subscription URL
-                    sub_url = panel_user.get('subscriptionUrl')
+                    sub_url = normalize_panel_subscription_url(panel_user)
                     if sub_url and subscription.subscription_url != sub_url:
                         subscription.subscription_url = sub_url
 
-                    crypto_link = panel_user.get('subscriptionCryptoLink')
+                    crypto_link = _resolve_subscription_crypto_link(panel_user, sub_url or subscription.subscription_url)
                     if crypto_link and subscription.subscription_crypto_link != crypto_link:
                         subscription.subscription_crypto_link = crypto_link
 
                     # Update squads from panel
-                    _panel_squads = panel_user.get('activeInternalSquads', []) or []
-                    _squad_uuids = []
-                    if isinstance(_panel_squads, list):
-                        for _sq in _panel_squads:
-                            if isinstance(_sq, dict) and 'uuid' in _sq:
-                                _squad_uuids.append(_sq['uuid'])
-                            elif isinstance(_sq, str):
-                                _squad_uuids.append(_sq)
-                    if _squad_uuids and set(_squad_uuids) != set(subscription.connected_squads or []):
+                    _squad_uuids = extract_squad_uuids(panel_user.get('activeInternalSquads', []) or [])
+                    if _squad_uuids and connected_squad_id_set(_squad_uuids) != connected_squad_id_set(
+                        subscription.connected_squads
+                    ):
                         subscription.connected_squads = _squad_uuids
 
                     stats['updated'] += 1
@@ -2184,10 +2197,12 @@ class RemnaWaveService:
                 'device_limit': coerce_panel_device_limit(panel_user.get('hwidDeviceLimit')),
                 'connected_squads': squad_uuids,
                 'remnawave_short_uuid': panel_user.get('shortUuid'),
-                'subscription_url': panel_user.get('subscriptionUrl', ''),
-                'subscription_crypto_link': (
-                    panel_user.get('subscriptionCryptoLink') or (panel_user.get('happ') or {}).get('cryptoLink', '')
-                ),
+                'subscription_url': normalize_panel_subscription_url(panel_user) or '',
+                'subscription_crypto_link': _resolve_subscription_crypto_link(
+                    panel_user,
+                    normalize_panel_subscription_url(panel_user),
+                )
+                or '',
             }
 
             await create_subscription_no_commit(db, **subscription_data)
@@ -2212,9 +2227,14 @@ class RemnaWaveService:
                     device_limit=1,
                     connected_squads=[],
                     remnawave_short_uuid=panel_user.get('shortUuid'),
-                    subscription_url=panel_user.get('subscriptionUrl', ''),
-                    subscription_crypto_link=(
-                        panel_user.get('subscriptionCryptoLink') or (panel_user.get('happ') or {}).get('cryptoLink', '')
+                    subscription_url=normalize_panel_subscription_url(panel_user) or '',
+                    subscription_crypto_link=_resolve_subscription_crypto_link(
+                        panel_user,
+                        normalize_panel_subscription_url(panel_user),
+                    )
+                    or (
+                        panel_user.get('subscriptionCryptoLink')
+                        or (panel_user.get('happ') or {}).get('cryptoLink', '')
                     ),
                 )
                 logger.info('✅ Подготовлена базовая подписка для пользователя', telegram_id=user.telegram_id)
@@ -2335,16 +2355,11 @@ class RemnaWaveService:
             # traffic_limit_gb, device_limit: bot is source of truth, do not overwrite from panel
 
             # Update connected_squads from panel (panel is source of truth for squad assignments)
-            active_squads = panel_user.get('activeInternalSquads', [])
-            panel_squad_uuids = []
-            if isinstance(active_squads, list):
-                for squad in active_squads:
-                    if isinstance(squad, dict) and 'uuid' in squad:
-                        panel_squad_uuids.append(squad['uuid'])
-                    elif isinstance(squad, str):
-                        panel_squad_uuids.append(squad)
+            panel_squad_uuids = extract_squad_uuids(panel_user.get('activeInternalSquads', []) or [])
 
-            if panel_squad_uuids and set(panel_squad_uuids) != set(subscription.connected_squads or []):
+            if panel_squad_uuids and connected_squad_id_set(panel_squad_uuids) != connected_squad_id_set(
+                subscription.connected_squads
+            ):
                 subscription.connected_squads = panel_squad_uuids
                 logger.info(
                     'Обновлены connected_squads из панели',
@@ -2363,13 +2378,11 @@ class RemnaWaveService:
                     new_short_uuid=new_short_uuid,
                 )
 
-            panel_url = panel_user.get('subscriptionUrl', '')
+            panel_url = normalize_panel_subscription_url(panel_user) or ''
             if panel_url and subscription.subscription_url != panel_url:
                 subscription.subscription_url = panel_url
 
-            panel_crypto_link = panel_user.get('subscriptionCryptoLink') or (panel_user.get('happ') or {}).get(
-                'cryptoLink', ''
-            )
+            panel_crypto_link = _resolve_subscription_crypto_link(panel_user, panel_url or subscription.subscription_url)
             if panel_crypto_link and subscription.subscription_crypto_link != panel_crypto_link:
                 subscription.subscription_crypto_link = panel_crypto_link
 

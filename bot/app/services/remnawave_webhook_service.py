@@ -38,6 +38,8 @@ from app.localization.texts import get_texts
 from app.services.admin_notification_service import AdminNotificationService
 from app.services.notification_delivery_service import NotificationType, notification_delivery_service
 from app.utils.miniapp_buttons import build_miniapp_or_callback_button
+from app.utils.subscription_utils import normalize_panel_subscription_url
+from app.utils.happ_crypto_link import ensure_happ_crypto_link
 
 
 logger = structlog.get_logger(__name__)
@@ -1206,7 +1208,7 @@ class RemnaWaveWebhookService:
                     changed = True
 
         # Sync subscription URL (validate to prevent stored XSS)
-        subscription_url = data.get('subscriptionUrl')
+        subscription_url = normalize_panel_subscription_url(data)
         if (
             subscription_url
             and self._is_valid_url(subscription_url)
@@ -1217,6 +1219,12 @@ class RemnaWaveWebhookService:
 
         # Sync subscription crypto link (for HAPP_CRYPT4_LINK)
         subscription_crypto_link = data.get('subscriptionCryptoLink') or (data.get('happ') or {}).get('cryptoLink', '')
+        if not subscription_crypto_link:
+            subscription_crypto_link = ensure_happ_crypto_link(
+                subscription_url or subscription.subscription_url,
+                short_uuid=data.get('shortUuid'),
+                existing_crypto_link=subscription.subscription_crypto_link,
+            ) or ''
         if subscription_crypto_link and self._is_valid_link(subscription_crypto_link):
             if subscription.subscription_crypto_link != subscription_crypto_link:
                 subscription.subscription_crypto_link = subscription_crypto_link
@@ -1455,8 +1463,13 @@ class RemnaWaveWebhookService:
             logger.info('Webhook user.revoked: подписка не найдена в БД, пропуск', user_id=user.id)
             return
 
-        new_url = data.get('subscriptionUrl')
+        new_url = normalize_panel_subscription_url(data)
         new_crypto_link = data.get('subscriptionCryptoLink') or (data.get('happ') or {}).get('cryptoLink', '')
+        if not new_crypto_link:
+            new_crypto_link = ensure_happ_crypto_link(
+                new_url or subscription.subscription_url,
+                short_uuid=data.get('shortUuid'),
+            ) or ''
         changed = False
 
         if new_url and self._is_valid_url(new_url) and subscription.subscription_url != new_url:

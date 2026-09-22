@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.utils.subscription_utils import connected_squad_id_set, extract_squad_uuids
 from app.database.crud.discount_offer import list_discount_offers, upsert_discount_offer
 from app.database.crud.promo_offer_log import list_promo_offer_logs
 from app.database.crud.promo_offer_template import (
@@ -2129,11 +2130,11 @@ async def send_offer_to_segment(callback: CallbackQuery, db_user: User, db: Asyn
             if settings.is_multi_tariff_enabled():
                 all_squads: set[str] = set()
                 for s in getattr(user, 'subscriptions', None) or []:
-                    all_squads.update(s.connected_squads or [])
+                    all_squads.update(extract_squad_uuids(s.connected_squads))
                 connected = all_squads
             else:
                 subscription = getattr(user, 'subscription', None)
-                connected = set(subscription.connected_squads or []) if subscription else set()
+                connected = connected_squad_id_set(subscription.connected_squads) if subscription else set()
             if squad_uuid in connected:
                 continue
             filtered_users.append(user)
@@ -2229,7 +2230,7 @@ async def send_offer_to_user(callback: CallbackQuery, db_user: User, db: AsyncSe
     skipped = 0
     if template.offer_type == 'test_access' and squad_uuid:
         subscription = getattr(user, 'subscription', None)
-        connected = set(subscription.connected_squads or []) if subscription else set()
+        connected = connected_squad_id_set(subscription.connected_squads) if subscription else set()
         if squad_uuid in connected:
             users_to_send = []
             skipped = 1

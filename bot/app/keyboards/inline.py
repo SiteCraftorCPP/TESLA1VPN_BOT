@@ -19,6 +19,7 @@ from app.utils.pricing_utils import (
 from app.utils.subscription_utils import (
     get_display_subscription_link,
     get_happ_cryptolink_redirect_link,
+    get_subscription_webapp_url,
 )
 
 
@@ -632,7 +633,7 @@ def get_main_menu_keyboard(
                     [
                         InlineKeyboardButton(
                             text=texts.t('CONNECT_BUTTON', '🔗 Подключиться'),
-                            web_app=types.WebAppInfo(url=subscription_link),
+                            web_app=types.WebAppInfo(url=get_subscription_webapp_url(subscription_link)),
                         )
                     ]
                 )
@@ -1109,7 +1110,7 @@ def get_subscription_keyboard(
                     [
                         InlineKeyboardButton(
                             text=texts.t('CONNECT_BUTTON', '🔗 Подключиться'),
-                            web_app=types.WebAppInfo(url=subscription_link),
+                            web_app=types.WebAppInfo(url=get_subscription_webapp_url(subscription_link)),
                         )
                     ]
                 )

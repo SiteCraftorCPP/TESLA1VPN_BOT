@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.utils.subscription_utils import extract_squad_uuids
 from app.database.crud.promo_group import get_promo_group_by_id
 from app.database.crud.subscription import get_subscription_by_user_id
 from app.database.crud.transaction import get_user_transactions_count

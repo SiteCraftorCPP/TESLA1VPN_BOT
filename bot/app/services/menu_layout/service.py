@@ -1065,11 +1065,14 @@ class MenuLayoutService:
             # пытаемся получить URL из подписки пользователя
             if is_connect_button and (not url or not (url.startswith('http://') or url.startswith('https://'))):
                 if context.subscription:
-                    from app.utils.subscription_utils import get_display_subscription_link
+                    from app.utils.subscription_utils import (
+                        get_display_subscription_link,
+                        get_subscription_webapp_url,
+                    )
 
                     subscription_url = get_display_subscription_link(context.subscription)
                     if subscription_url:
-                        url = subscription_url
+                        url = get_subscription_webapp_url(subscription_url) or subscription_url
                         logger.info('🔗 Кнопка connect: получен URL из подписки: ...', url=url[:50])
                 # Если все еще нет URL, пробуем использовать настройку MINIAPP_CUSTOM_URL
                 if not url or not (url.startswith('http://') or url.startswith('https://')):

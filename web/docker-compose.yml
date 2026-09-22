@@ -19,6 +19,7 @@ services:
       - .env
     volumes:
       - /opt/tesla1vpn/web/static/miniapp/redirect.html:/usr/share/nginx/html/miniapp/redirect.html:ro
+      - /opt/tesla1vpn/web/static/miniapp/profile.html:/usr/share/nginx/html/miniapp/profile.html:ro
     ports:
       - '${CABINET_PORT:-3020}:80'
     healthcheck:

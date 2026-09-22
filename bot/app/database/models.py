@@ -32,7 +32,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped, backref, mapped_column, relationship
+from sqlalchemy.orm import Mapped, backref, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 
@@ -2108,6 +2108,16 @@ class Subscription(Base):
     traffic_purchases = relationship(
         'TrafficPurchase', back_populates='subscription', passive_deletes=True, cascade='all, delete-orphan'
     )
+
+    @validates('connected_squads')
+    def _validate_connected_squads(self, _key: str, value: list | None) -> list[str]:
+        from app.utils.subscription_utils import normalize_connected_squads
+
+        if not value:
+            return []
+        if isinstance(value, list):
+            return normalize_connected_squads(value)
+        return normalize_connected_squads([value])
 
     @property
     def is_active(self) -> bool:

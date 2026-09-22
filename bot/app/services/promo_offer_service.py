@@ -17,6 +17,7 @@ from app.database.models import (
     User,
 )
 from app.services.subscription_service import SubscriptionService
+from app.utils.subscription_utils import connected_squad_id_set
 
 
 logger = structlog.get_logger(__name__)
@@ -63,7 +64,7 @@ class PromoOfferService:
 
         # Check if ALL subscriptions already have all squads
         all_already = all(
-            set(squad_uuids).issubset({str(s) for s in (sub.connected_squads or [])}) for sub in target_subs
+            set(squad_uuids).issubset(connected_squad_id_set(sub.connected_squads)) for sub in target_subs
         )
         if all_already:
             return False, None, None, 'already_connected'
@@ -203,7 +204,7 @@ class PromoOfferService:
         for subscription, squads_to_remove in subscriptions_updates.values():
             if not squads_to_remove:
                 continue
-            current = set(subscription.connected_squads or [])
+            current = connected_squad_id_set(subscription.connected_squads)
             updated = current.difference(squads_to_remove)
             if updated != current:
                 subscription.connected_squads = list(updated)

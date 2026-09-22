@@ -15,6 +15,7 @@ from app.utils.subscription_utils import (
     convert_subscription_link_to_happ_scheme,
     get_display_subscription_link,
     get_happ_cryptolink_redirect_link,
+    get_subscription_webapp_url,
 )
 
 from .common import get_platforms_list, load_app_config_async, logger
@@ -97,7 +98,7 @@ async def handle_connect_subscription(
                 [
                     InlineKeyboardButton(
                         text=texts.t('CONNECT_BUTTON', '🔗 Подключиться'),
-                        web_app=types.WebAppInfo(url=subscription_link),
+                        web_app=types.WebAppInfo(url=get_subscription_webapp_url(subscription_link)),
                     )
                 ],
                 [InlineKeyboardButton(text=texts.BACK, callback_data=back_cb)],

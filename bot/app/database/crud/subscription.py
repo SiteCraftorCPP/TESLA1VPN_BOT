@@ -147,7 +147,9 @@ async def create_trial_subscription(
     # Иначе используем squad_uuid или все доступные сквады по умолчанию.
     final_squads = []
     if connected_squads:
-        final_squads = connected_squads
+        from app.utils.subscription_utils import normalize_connected_squads
+
+        final_squads = normalize_connected_squads(connected_squads)
     elif squad_uuid:
         final_squads = [squad_uuid]
     else:
@@ -375,10 +377,12 @@ async def replace_subscription(
     await _lock_subscription_row(db, subscription)
 
     current_time = datetime.now(UTC)
-    old_squads = set(subscription.connected_squads or [])
+    from app.utils.subscription_utils import connected_squad_id_set, normalize_connected_squads
+
+    old_squads = connected_squad_id_set(subscription.connected_squads)
 
     # Fallback: если connected_squads пустой — берём первый доступный сквад
-    final_connected = list(connected_squads or [])
+    final_connected = normalize_connected_squads(connected_squads)
     if not final_connected:
         try:
             from app.database.crud.server_squad import get_available_server_squads
@@ -394,7 +398,7 @@ async def replace_subscription(
         except Exception as error:
             logger.error('❌ Не удалось получить fallback сквад', subscription_id=subscription.id, error=error)
 
-    new_squads = set(final_connected)
+    new_squads = connected_squad_id_set(final_connected)
 
     new_autopay_enabled = subscription.autopay_enabled if autopay_enabled is None else autopay_enabled
     new_autopay_days_before = subscription.autopay_days_before if autopay_days_before is None else autopay_days_before
@@ -854,6 +858,9 @@ async def extend_subscription(
         logger.info('📱 Обновлен лимит устройств: →', old_devices=old_devices, device_limit=device_limit)
 
     if connected_squads is not None:
+        from app.utils.subscription_utils import normalize_connected_squads
+
+        connected_squads = normalize_connected_squads(connected_squads)
         # Не перезаписываем существующие сквады пустым списком
         if connected_squads or not subscription.connected_squads:
             old_squads = subscription.connected_squads
