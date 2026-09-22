@@ -40,87 +40,7 @@ set_kv "$WEB_ENV" VITE_APP_LOGO "Х"
 cd /opt/tesla1vpn/bot && docker compose build bot && docker compose up -d --force-recreate bot
 sleep 12
 
-docker exec remnawave_bot python - <<'PY'
-import asyncio
-import json
-import os
-import re
-import urllib.request
-
-from app.database.crud.system_setting import set_setting_value
-from app.database.database import AsyncSessionLocal
-
-BRAND_RU = "Хамелеон"
-
-
-async def db_branding() -> None:
-    async with AsyncSessionLocal() as db:
-        await set_setting_value(db, "CABINET_BRANDING_NAME", BRAND_RU)
-        await db.commit()
-    print("db_branding_ok", BRAND_RU)
-
-
-asyncio.run(db_branding())
-
-env = open("/opt/tesla1vpn/bot/.env", encoding="utf-8").read()
-token = re.search(r"^REMNAWAVE_API_KEY=(.+)$", env, re.M).group(1).strip()
-bot_user = re.search(r"^BOT_USERNAME=(.+)$", env, re.M)
-bot_user = bot_user.group(1).strip() if bot_user else ""
-support = "https://t.me/" + bot_user if bot_user else "https://t.me/i_saidru"
-profile_url = "https://cabinet.projecthub.su/miniapp/profile.html"
-
-
-def api(method, path, body=None):
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(
-        "https://projecthub.su" + path,
-        data=data,
-        method=method,
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode())
-
-
-s = api("GET", "/api/subscription-settings")["response"]
-headers = dict(s.get("customResponseHeaders") or {})
-headers["profile-web-page-url"] = profile_url
-headers["profile-title"] = BRAND_RU
-headers["content-disposition"] = f'attachment; filename="{BRAND_RU}"'
-patch = {
-    "uuid": s["uuid"],
-    "profileTitle": BRAND_RU,
-    "supportLink": support,
-    "profileUpdateInterval": s.get("profileUpdateInterval") or 12,
-    "serveJsonAtBaseSubscription": s.get("serveJsonAtBaseSubscription"),
-    "isProfileWebpageUrlEnabled": True,
-    "isShowCustomRemarks": s.get("isShowCustomRemarks"),
-    "customRemarks": s.get("customRemarks"),
-    "happAnnounce": f"Добро пожаловать в {BRAND_RU}",
-    "happRouting": s.get("happRouting"),
-    "customResponseHeaders": headers,
-    "randomizeHosts": s.get("randomizeHosts"),
-    "responseRules": s.get("responseRules"),
-    "hwidSettings": s.get("hwidSettings"),
-}
-api("PATCH", "/api/subscription-settings", patch)
-print("subscription_settings_ok", BRAND_RU)
-
-hosts = api("GET", "/api/hosts")["response"]
-fixed = 0
-for h in hosts:
-    desc = h.get("serverDescription") or ""
-    if "TESLA" in desc.upper():
-        new_desc = re.sub(r"TESLA\s*VPN?", BRAND_RU, desc, flags=re.I).strip()
-        if new_desc != desc:
-            body = {k: h.get(k) for k in h if k not in ("createdAt", "updatedAt")}
-            body["serverDescription"] = new_desc
-            api("PATCH", "/api/hosts", body)
-            fixed += 1
-print("hosts_patched", fixed)
-PY
-
-python3 /opt/tesla1vpn/scripts/setup_info_pages_legal.py
+docker exec remnawave_bot python app/patch_rebrand_panel.py
 
 cd /opt/tesla1vpn/web && docker compose build cabinet-frontend && docker compose up -d --force-recreate cabinet-frontend
 
@@ -152,5 +72,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-    # legal script must exist on server after git pull
     main()
+    legal = ROOT / 'scripts' / 'setup_info_pages_legal.py'
+    subprocess.run([sys.executable, str(legal)], check=True)
