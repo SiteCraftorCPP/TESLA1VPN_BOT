@@ -412,7 +412,14 @@ class RemnaWaveAPI:
                         is_harmless = response.status == 400 and (
                             'already enabled' in error_lower or 'already disabled' in error_lower
                         )
-                        log = logger.warning if response.status in (502, 503, 504) or is_harmless else logger.error
+                        is_optional_missing = response.status == 404 and (
+                            'happ/encrypt' in endpoint or '/api/system/tools/happ/encrypt' in endpoint
+                        )
+                        log = (
+                            logger.warning
+                            if response.status in (502, 503, 504) or is_harmless or is_optional_missing
+                            else logger.error
+                        )
                         log('API Error %s: %s', response.status, error_message)
                         log('Response: %s', response_text[:500])
                         raise RemnaWaveAPIError(error_message, response.status, response_data)
@@ -1288,16 +1295,12 @@ class RemnaWaveAPI:
             return False
 
     async def encrypt_happ_crypto_link(self, link_to_encrypt: str) -> str | None:
-        try:
-            data = {'linkToEncrypt': link_to_encrypt}
-            response = await self._make_request('POST', '/api/system/tools/happ/encrypt', data)
-            return response.get('response', {}).get('encryptedLink')
-        except RemnaWaveAPIError as e:
-            logger.warning('Не удалось зашифровать happ ссылку', message=e.message)
-            return None
-        except Exception as e:
-            logger.warning('Ошибка при шифровании happ ссылки', error=e)
-            return None
+        """Local Happ RSA encrypt only — panel /happ/encrypt is absent on our RemnaWave build."""
+        from app.utils.happ_crypto_link import ensure_happ_crypto_link
+        from app.utils.subscription_utils import normalize_remnawave_subscription_url
+
+        normalized = normalize_remnawave_subscription_url(link_to_encrypt) or link_to_encrypt
+        return ensure_happ_crypto_link(normalized)
 
     async def enrich_user_with_happ_link(self, user: RemnaWaveUser) -> RemnaWaveUser:
         if not user.happ_crypto_link and user.subscription_url:
@@ -1343,9 +1346,17 @@ class RemnaWaveAPI:
             logger.warning('Неизвестная стратегия трафика: используем NO_RESET', strategy_str=strategy_str)
             traffic_strategy = TrafficLimitStrategy.NO_RESET
 
+        from app.utils.subscription_utils import normalize_remnawave_subscription_url
+
+        short_uuid = user_data['shortUuid']
+        subscription_url = normalize_remnawave_subscription_url(
+            user_data.get('subscriptionUrl', ''),
+            short_uuid,
+        )
+
         return RemnaWaveUser(
             uuid=user_data['uuid'],
-            short_uuid=user_data['shortUuid'],
+            short_uuid=short_uuid,
             username=user_data['username'],
             status=status,
             traffic_limit_bytes=user_data.get('trafficLimitBytes', 0),
@@ -1356,7 +1367,7 @@ class RemnaWaveAPI:
             hwid_device_limit=user_data.get('hwidDeviceLimit'),
             description=user_data.get('description'),
             tag=user_data.get('tag'),
-            subscription_url=user_data.get('subscriptionUrl', ''),
+            subscription_url=subscription_url or '',
             active_internal_squads=user_data.get('activeInternalSquads', []),
             created_at=datetime.fromisoformat(user_data['createdAt'].replace('Z', '+00:00')),
             updated_at=datetime.fromisoformat(user_data['updatedAt'].replace('Z', '+00:00')),
@@ -1460,16 +1471,25 @@ class RemnaWaveAPI:
         )
 
     def _parse_subscription_info(self, data: dict) -> SubscriptionInfo:
+        from app.utils.subscription_utils import normalize_remnawave_subscription_url
+
         happ_data = data.get('happ') or {}
         happ_link = happ_data.get('link') or happ_data.get('url')
         happ_crypto_link = happ_data.get('cryptoLink') or happ_data.get('crypto_link')
+        short_uuid = data.get('shortUuid') or data.get('short_uuid')
+        if not short_uuid and isinstance(data.get('user'), dict):
+            short_uuid = data['user'].get('shortUuid') or data['user'].get('short_uuid')
 
         return SubscriptionInfo(
             is_found=data['isFound'],
             user=data.get('user'),
             links=data.get('links', []),
             ss_conf_links=data.get('ssConfLinks', {}),
-            subscription_url=data.get('subscriptionUrl', ''),
+            subscription_url=normalize_remnawave_subscription_url(
+                data.get('subscriptionUrl', ''),
+                short_uuid,
+            )
+            or '',
             happ=data.get('happ'),
             happ_link=happ_link,
             happ_crypto_link=happ_crypto_link,

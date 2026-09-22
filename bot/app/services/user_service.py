@@ -1327,7 +1327,7 @@ class UserService:
                         for sub in subs:
                             logger.info('🔄 Удаляем подписку', subscription_id=sub.id)
                             if sub.connected_squads:
-                                all_squad_ids.update(sub.connected_squads)
+                                all_squad_ids.update(extract_squad_uuids(sub.connected_squads))
                             await db.execute(
                                 delete(SubscriptionServer).where(SubscriptionServer.subscription_id == sub.id)
                             )

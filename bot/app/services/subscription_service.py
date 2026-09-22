@@ -12,9 +12,8 @@ from app.database.crud.server_squad import get_all_server_squads
 from app.database.crud.user import get_user_by_id
 from app.database.models import Subscription, SubscriptionStatus, User
 from app.external.remnawave_api import RemnaWaveAPI, RemnaWaveAPIError, RemnaWaveUser, TrafficLimitStrategy, UserStatus
-from app.utils.subscription_utils import (
-    resolve_hwid_device_limit_for_payload,
-)
+from app.utils.happ_crypto_link import ensure_happ_crypto_link
+from app.utils.subscription_utils import extract_squad_uuids, resolve_hwid_device_limit_for_payload
 
 
 logger = structlog.get_logger(__name__)
@@ -212,7 +211,10 @@ class SubscriptionService:
 
                 subscription.remnawave_short_uuid = updated_user.short_uuid
                 subscription.subscription_url = updated_user.subscription_url
-                subscription.subscription_crypto_link = updated_user.happ_crypto_link
+                subscription.subscription_crypto_link = updated_user.happ_crypto_link or ensure_happ_crypto_link(
+                    updated_user.subscription_url,
+                    short_uuid=updated_user.short_uuid,
+                )
                 subscription.remnawave_uuid = updated_user.uuid
                 # Legacy field — keep in sync for single-mode backward compat
                 if not settings.is_multi_tariff_enabled():
@@ -262,8 +264,9 @@ class SubscriptionService:
             email=user.email,
             description=description,
         )
-        if subscription.connected_squads:
-            common_kwargs['active_internal_squads'] = subscription.connected_squads
+        squad_ids = extract_squad_uuids(subscription.connected_squads)
+        if squad_ids:
+            common_kwargs['active_internal_squads'] = squad_ids
         if user_tag is not None:
             common_kwargs['tag'] = user_tag
         if hwid_limit is not None:
@@ -359,8 +362,9 @@ class SubscriptionService:
             email=user.email,
             description=description,
         )
-        if subscription.connected_squads:
-            common_kwargs['active_internal_squads'] = subscription.connected_squads
+        squad_ids = extract_squad_uuids(subscription.connected_squads)
+        if squad_ids:
+            common_kwargs['active_internal_squads'] = squad_ids
         if user_tag is not None:
             common_kwargs['tag'] = user_tag
         if hwid_limit is not None:
@@ -405,15 +409,16 @@ class SubscriptionService:
         panel_user: RemnaWaveUser,
     ) -> RemnaWaveUser:
         """POST /api/users may ignore activeInternalSquads — ensure PATCH is applied."""
-        if not subscription.connected_squads:
+        desired_ids = extract_squad_uuids(subscription.connected_squads)
+        if not desired_ids:
             return panel_user
-        panel_squads = set(panel_user.active_internal_squads or [])
-        desired = set(subscription.connected_squads)
+        panel_squads = set(extract_squad_uuids(panel_user.active_internal_squads))
+        desired = set(desired_ids)
         if panel_squads == desired:
             return panel_user
         return await api.update_user(
             uuid=panel_user.uuid,
-            active_internal_squads=list(subscription.connected_squads),
+            active_internal_squads=desired_ids,
         )
 
     async def update_remnawave_user(
@@ -503,8 +508,9 @@ class SubscriptionService:
                 # Сквады отправляем только при явном sync_squads=True (propagate_squads и пр.)
                 # В рутинных обновлениях пропускаем — сквады уже назначены при создании подписки,
                 # а пересылка стейловых UUID вызывает FK violation → A039 в RemnaWave
-                if sync_squads and subscription.connected_squads:
-                    update_kwargs['active_internal_squads'] = subscription.connected_squads
+                squad_ids = extract_squad_uuids(subscription.connected_squads)
+                if sync_squads and squad_ids:
+                    update_kwargs['active_internal_squads'] = squad_ids
 
                 if user_tag is not None:
                     update_kwargs['tag'] = user_tag
@@ -540,7 +546,10 @@ class SubscriptionService:
                         )
 
                 subscription.subscription_url = updated_user.subscription_url
-                subscription.subscription_crypto_link = updated_user.happ_crypto_link
+                subscription.subscription_crypto_link = updated_user.happ_crypto_link or ensure_happ_crypto_link(
+                    updated_user.subscription_url,
+                    short_uuid=updated_user.short_uuid,
+                )
                 await db.commit()
 
                 status_text = 'активным' if is_actually_active else 'истёкшим'
@@ -684,7 +693,10 @@ class SubscriptionService:
 
                 subscription.remnawave_short_uuid = updated_user.short_uuid
                 subscription.subscription_url = updated_user.subscription_url
-                subscription.subscription_crypto_link = updated_user.happ_crypto_link
+                subscription.subscription_crypto_link = updated_user.happ_crypto_link or ensure_happ_crypto_link(
+                    updated_user.subscription_url,
+                    short_uuid=updated_user.short_uuid,
+                )
                 await db.commit()
 
                 logger.info('✅ Обновлена ссылка подписки для', _format_user_log=self._format_user_log(user))
@@ -1056,8 +1068,9 @@ class SubscriptionService:
                             ),
                         )
 
-                        if sub.connected_squads:
-                            update_kwargs['active_internal_squads'] = sub.connected_squads
+                        squad_ids = extract_squad_uuids(sub.connected_squads)
+                        if squad_ids:
+                            update_kwargs['active_internal_squads'] = squad_ids
 
                         if user_tag is not None:
                             update_kwargs['tag'] = user_tag
@@ -1073,7 +1086,10 @@ class SubscriptionService:
 
                         # Сохраняем в памяти — commit будет после gather
                         sub.subscription_url = updated_user.subscription_url
-                        sub.subscription_crypto_link = updated_user.happ_crypto_link
+                        sub.subscription_crypto_link = updated_user.happ_crypto_link or ensure_happ_crypto_link(
+                            updated_user.subscription_url,
+                            short_uuid=updated_user.short_uuid,
+                        )
                         return True
 
                     except Exception as e:
