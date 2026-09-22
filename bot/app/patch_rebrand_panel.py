@@ -76,8 +76,11 @@ def main() -> None:
             continue
         body = {k: h.get(k) for k in h if k not in ('createdAt', 'updatedAt')}
         body['serverDescription'] = new_desc
-        _api('PATCH', '/api/hosts', body)
-        fixed += 1
+        try:
+            _api('PATCH', '/api/hosts', body)
+            fixed += 1
+        except Exception as exc:  # pragma: no cover - panel schema varies per host
+            print('host_patch_skip', h.get('uuid'), exc)
     print('hosts_patched', fixed)
 
 
