@@ -12,12 +12,22 @@ PHONE = '\U0001f4f1'  # 📱
 
 REMOTE = r"""
 set -e
-cd /opt/tesla1vpn && git pull origin main
+cd /opt/tesla1vpn && git fetch origin main && git reset --hard origin/main && git log -1 --oneline
 docker cp /opt/tesla1vpn/bot/app/patch_lte_5g_remark.py remnawave_bot:/app/app/patch_lte_5g_remark.py
-SHORT=$(docker exec remnawave_bot_db psql -U remnawave_user -d remnawave_bot -tAc \
-  "SELECT remnawave_short_uuid FROM subscriptions WHERE status='active' AND remnawave_short_uuid IS NOT NULL ORDER BY id DESC LIMIT 1" | tr -d '[:space:]')
-echo "verify_short=$SHORT"
-docker exec -e VERIFY_SUB_SHORT="$SHORT" remnawave_bot python app/patch_lte_5g_remark.py
+docker exec remnawave_bot python app/patch_lte_5g_remark.py
+
+# shortUuid from panel (authoritative for /api/sub)
+SHORT=$(docker exec remnawave_bot python -c "
+import json, urllib.request
+from app.config import settings
+p=settings.get_remnawave_auth_params()
+t=p.get('api_key',''); b=(p.get('base_url') or '').rstrip('/')
+r=urllib.request.Request(b+'/api/users?size=1', headers={'Authorization':'Bearer '+t})
+with urllib.request.urlopen(r,timeout=30) as resp:
+    u=json.loads(resp.read().decode())['response']['users'][0]
+print(u.get('shortUuid',''))
+")
+echo "panel_short=$SHORT"
 
 docker exec remnawave_bot curl -sk "https://projecthub.su/api/sub/${SHORT}" -H "User-Agent: Happ/4.11.0" | docker exec -i remnawave_bot python -c "
 import sys, base64, json
