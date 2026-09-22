@@ -217,8 +217,9 @@ export default function TopUpAmount() {
         // иначе после window.location.href этот код не выполнится).
         if (method && data.payment_id) {
           const methodKey = method.id.toLowerCase().replace(/-/g, '_');
-          const displayName =
-            t(`balance.paymentMethods.${methodKey}.name`, { defaultValue: '' }) || method.name;
+          const displayName = t(`balance.paymentMethods.${methodKey}.name`, {
+            defaultValue: method.name,
+          });
           saveTopUpPendingInfo({
             amount_kopeks: data.amount_kopeks,
             method_id: method.id,
@@ -286,8 +287,7 @@ export default function TopUpAmount() {
   const maxRubles = method.max_amount_kopeks / 100;
   const methodKey = method.id.toLowerCase().replace(/-/g, '_');
   const isStarsMethod = methodKey.includes('stars');
-  const methodName =
-    t(`balance.paymentMethods.${methodKey}.name`, { defaultValue: '' }) || method.name;
+  const methodName = t(`balance.paymentMethods.${methodKey}.name`, { defaultValue: method.name });
 
   const handleSubmit = () => {
     setError(null);

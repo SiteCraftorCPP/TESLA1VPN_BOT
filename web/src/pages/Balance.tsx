@@ -308,10 +308,10 @@ export default function Balance() {
               {paymentMethods.map((method) => {
                 const methodKey = method.id.toLowerCase().replace(/-/g, '_');
                 const translatedName = t(`balance.paymentMethods.${methodKey}.name`, {
-                  defaultValue: '',
+                  defaultValue: method.name,
                 });
                 const translatedDesc = t(`balance.paymentMethods.${methodKey}.description`, {
-                  defaultValue: '',
+                  defaultValue: method.description ?? '',
                 });
 
                 return (
@@ -322,7 +322,7 @@ export default function Balance() {
                     onClick={() => method.is_available && navigate(`/balance/top-up/${method.id}`)}
                   >
                     <div className="font-semibold text-dark-100">
-                      {translatedName || method.name}
+                      {translatedName}
                     </div>
                     {(translatedDesc || method.description) && (
                       <div className="mt-1 text-sm text-dark-500">

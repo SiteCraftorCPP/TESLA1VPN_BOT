@@ -58,10 +58,10 @@ export default function TopUpMethodSelect() {
               {paymentMethods.map((method) => {
                 const methodKey = method.id.toLowerCase().replace(/-/g, '_');
                 const translatedName = t(`balance.paymentMethods.${methodKey}.name`, {
-                  defaultValue: '',
+                  defaultValue: method.name,
                 });
                 const translatedDesc = t(`balance.paymentMethods.${methodKey}.description`, {
-                  defaultValue: '',
+                  defaultValue: method.description ?? '',
                 });
 
                 return (
@@ -74,7 +74,7 @@ export default function TopUpMethodSelect() {
                     <div className="flex items-center gap-3">
                       <PaymentMethodIcon method={methodKey} className="h-8 w-8 flex-shrink-0" />
                       <div className="font-semibold text-dark-100">
-                        {translatedName || method.name}
+                        {translatedName}
                       </div>
                     </div>
                     {(translatedDesc || method.description) && (

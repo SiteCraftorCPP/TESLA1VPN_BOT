@@ -551,7 +551,7 @@ class Settings(BaseSettings):
     PLATEGA_ENABLED: bool = False
     PLATEGA_MERCHANT_ID: str | None = None
     PLATEGA_SECRET: str | None = None
-    PLATEGA_DISPLAY_NAME: str = 'Platega'
+    PLATEGA_DISPLAY_NAME: str = 'Карта и СБП'
     PLATEGA_BASE_URL: str = 'https://app.platega.io'
     PLATEGA_RETURN_URL: str | None = None
     PLATEGA_FAILED_URL: str | None = None
