@@ -29,30 +29,7 @@ print(u.get('shortUuid',''))
 ")
 echo "panel_short=$SHORT"
 
-docker exec remnawave_bot curl -sk "https://projecthub.su/api/sub/${SHORT}" -H "User-Agent: Happ/4.11.0" | docker exec -i remnawave_bot python -c "
-import sys, base64, json
-raw = sys.stdin.read().strip()
-phone = chr(0x1F4F1)
-print('body_len', len(raw))
-print('body_head', raw[:220])
-if not raw or raw[0] in '{[':
-    try:
-        d = json.loads(raw) if raw else {}
-        print('json', d)
-    except Exception:
-        pass
-    raise SystemExit(0)
-try:
-    t = base64.b64decode(raw).decode('utf-8', 'replace')
-except Exception as e:
-    print('b64_err', e)
-    raise SystemExit(0)
-for line in t.splitlines():
-    if '#' in line:
-        tag = line.split('#')[-1]
-        if phone in tag or '5G' in tag or 'lte' in line.lower():
-            print('tag', tag)
-"
+docker exec -e VERIFY_SUB_SHORT="$SHORT" remnawave_bot python app/patch_lte_5g_remark.py
 
 echo LTE_5G_OK
 """

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import os
 import urllib.request
 
 from app.config import settings
@@ -36,8 +38,6 @@ def _api(method: str, path: str, body: dict | None = None) -> dict:
 
 
 def main() -> None:
-    params = settings.get_remnawave_auth_params()
-    base = (params.get('base_url') or '').rstrip('/')
     hosts = _api('GET', '/api/hosts')['response']
     patched = 0
     for h in hosts:
@@ -75,6 +75,36 @@ def main() -> None:
         print('patched', h.get('uuid'), remark, '->', new_remark)
         patched += 1
     print('lte_5g_done', patched)
+
+    short = (os.environ.get('VERIFY_SUB_SHORT') or '').strip()
+    if not short:
+        return
+    params = settings.get_remnawave_auth_params()
+    base = (params.get('base_url') or '').rstrip('/')
+    req = urllib.request.Request(
+        f'{base}/api/sub/{short}',
+        headers={'User-Agent': 'Happ/4.11.0 (iOS)'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode()
+    except Exception as exc:
+        print('verify_sub_fail', exc)
+        return
+    print('verify_sub_len', len(raw))
+    if raw.startswith('{') or raw.startswith('['):
+        data = json.loads(raw)
+        items = data if isinstance(data, list) else [data]
+        for c in items:
+            print('json_remark', c.get('remarks'))
+        return
+    text = base64.b64decode(raw).decode('utf-8', 'replace')
+    for line in text.splitlines():
+        if '#' not in line:
+            continue
+        tag = line.split('#')[-1]
+        if PHONE in tag or '5G' in tag or 'lte' in line.lower():
+            print('sub_tag', tag)
 
 
 if __name__ == '__main__':
